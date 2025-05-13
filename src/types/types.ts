@@ -9,7 +9,7 @@ export interface ConfigParams {
   num_sites: number;
   distribution_type: 'percentages' | 'absolute';
   site_distributions: SiteDistribution;
-  dc_load_model: 'default' | 'custom';
+  dc_load_model: 'default' | 'high_density' | 'custom';
   users_per_dc_target: number;
   custom_dc_count?: number;
   enable_gc: boolean;
@@ -17,6 +17,10 @@ export interface ConfigParams {
   subsystem_monitoring: boolean;
   subsystem_journaling: boolean;
   subsystem_repository: boolean;
+  subsystem_os_installation: boolean;
+  subsystem_printing: boolean;
+  subsystem_file_sharing: boolean;
+  subsystem_dhcp: boolean;
 }
 
 export interface ResourceSpecs {
@@ -47,6 +51,10 @@ export interface CalculationResults {
     monitoring?: SubsystemSpecs;
     journaling?: SubsystemSpecs;
     repository?: SubsystemSpecs;
+    os_installation?: SubsystemSpecs;
+    printing?: SubsystemSpecs;
+    file_sharing?: SubsystemSpecs;
+    dhcp?: SubsystemSpecs;
   };
   average_load_per_dc: number;
   warnings: string[];

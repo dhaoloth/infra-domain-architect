@@ -1,7 +1,6 @@
 
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ConfigParams, CalculationResults } from '@/types/types';
 import { calculateInfrastructure } from '@/utils/calculationUtils';
 import ConfigForm from './ConfigForm';
@@ -9,12 +8,16 @@ import ResultsDisplay from './ResultsDisplay';
 
 const InfraCalculator = () => {
   const [results, setResults] = useState<CalculationResults | null>(null);
-  const [activeTab, setActiveTab] = useState<string>('config');
+  const [showResults, setShowResults] = useState<boolean>(false);
   
   const handleCalculate = (config: ConfigParams) => {
     const calculationResults = calculateInfrastructure(config);
     setResults(calculationResults);
-    setActiveTab('results');
+    setShowResults(true);
+  };
+
+  const handleBackToConfig = () => {
+    setShowResults(false);
   };
   
   return (
@@ -26,22 +29,21 @@ const InfraCalculator = () => {
         </p>
       </div>
       
-      <Card>
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="config">Configuration</TabsTrigger>
-            <TabsTrigger value="results" disabled={!results}>Results</TabsTrigger>
-          </TabsList>
-          <CardContent className="pt-6">
-            <TabsContent value="config">
-              <ConfigForm onSubmit={handleCalculate} />
-            </TabsContent>
-            <TabsContent value="results">
-              {results && <ResultsDisplay results={results} />}
-            </TabsContent>
-          </CardContent>
-        </Tabs>
-      </Card>
+      {showResults && results ? (
+        <>
+          <div className="mb-4">
+            <button 
+              className="text-blue-600 hover:text-blue-800 flex items-center" 
+              onClick={handleBackToConfig}
+            >
+              ← Back to configuration
+            </button>
+          </div>
+          <ResultsDisplay results={results} />
+        </>
+      ) : (
+        <ConfigForm onSubmit={handleCalculate} />
+      )}
     </div>
   );
 };
