@@ -1,5 +1,5 @@
 
-import { Handle, NodeProps, Position } from '@xyflow/react';
+import { Handle, NodeProps, Position } from 'reactflow';
 import { Server } from 'lucide-react';
 import { DC } from '@/types/topology-types';
 import useTopologyStore from '@/store/useTopologyStore';

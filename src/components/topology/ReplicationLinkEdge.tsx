@@ -1,5 +1,5 @@
 
-import { EdgeProps, getBezierPath } from '@xyflow/react';
+import { EdgeProps, getBezierPath } from 'reactflow';
 import useTopologyStore from '@/store/useTopologyStore';
 
 const ReplicationLinkEdge = ({

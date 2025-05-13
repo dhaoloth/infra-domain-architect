@@ -3,7 +3,7 @@ import Navigation from '@/components/Navigation';
 import SitePanel from '@/components/topology/SitePanel';
 import TopologyGraph from '@/components/topology/TopologyGraph';
 import TopologyControls from '@/components/topology/TopologyControls';
-import { ReactFlowProvider } from '@xyflow/react';
+import { ReactFlowProvider } from 'reactflow';
 
 const TopologyDesigner = () => {
   return (

@@ -10,7 +10,7 @@ import ReactFlow, {
   addEdge,
   Connection,
   ConnectionMode,
-} from '@xyflow/react';
+} from 'reactflow';
 import 'reactflow/dist/style.css';
 import DCNode from './DCNode';
 import ReplicationLinkEdge from './ReplicationLinkEdge';
