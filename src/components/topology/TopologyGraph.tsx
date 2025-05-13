@@ -12,18 +12,19 @@ import ReactFlow, {
   ConnectionMode,
   useReactFlow,
   BackgroundVariant,
-  NodeMouseHandler,
-  OnConnectStartParams,
   ReactFlowInstance,
+  OnConnectStartParams,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import DCNode from './DCNode';
+import SiteNode from './SiteNode';
 import ReplicationLinkEdge from './ReplicationLinkEdge';
 import useTopologyStore from '@/store/useTopologyStore';
 import { toast } from 'sonner';
 
 const nodeTypes = {
   dc: DCNode,
+  site: SiteNode
 };
 
 const edgeTypes = {
@@ -41,6 +42,10 @@ const snapToGrid = (position: { x: number, y: number }) => {
   };
 };
 
+// Default site dimensions
+const DEFAULT_SITE_WIDTH = 300;
+const DEFAULT_SITE_HEIGHT = 200;
+
 const TopologyGraph = () => {
   const { 
     dcs, 
@@ -56,22 +61,52 @@ const TopologyGraph = () => {
   const [connectingNodeId, setConnectingNodeId] = useState<string | null>(null);
 
   // Convert store data to ReactFlow nodes and edges
-  const initialNodes: Node[] = useMemo(() => dcs.map(dc => ({
-    id: dc.id,
-    type: 'dc',
-    data: { 
-      ...dc, 
-      siteName: sites.find(site => site.id === dc.siteId)?.name || 'Unknown Site',
-    },
-    position: { x: dc.x || Math.random() * 500, y: dc.y || Math.random() * 400 },
-  })), [dcs, sites]);
+  const initialNodes: Node[] = useMemo(() => {
+    // First create site nodes (they should be rendered below DC nodes)
+    const siteNodes = sites.map((site, index) => ({
+      id: site.id,
+      type: 'site',
+      data: site,
+      position: { 
+        x: site.x || (index * 350) + 50, 
+        y: site.y || 100 
+      },
+      style: { 
+        width: site.width || DEFAULT_SITE_WIDTH,
+        height: site.height || DEFAULT_SITE_HEIGHT,
+        zIndex: 0 // Lower z-index for sites
+      },
+      draggable: true,
+      selectable: true,
+    }));
+    
+    // Then create DC nodes
+    const dcNodes = dcs.map(dc => ({
+      id: dc.id,
+      type: 'dc',
+      data: { 
+        ...dc, 
+        siteName: sites.find(site => site.id === dc.siteId)?.name || '', 
+      },
+      position: { 
+        x: dc.x || Math.random() * 500, 
+        y: dc.y || Math.random() * 400 
+      },
+      parentId: dc.siteId || undefined,
+      draggable: true,
+      selectable: true,
+      zIndex: 1 // Higher z-index for DCs
+    }));
+    
+    return [...siteNodes, ...dcNodes];
+  }, [dcs, sites]);
 
   const initialEdges: Edge[] = useMemo(() => links.map(link => ({
     id: link.id,
     source: link.sourceDC,
     target: link.targetDC,
     type: 'replication',
-    data: { isInterSite: link.isInterSite },
+    data: link,
   })), [links]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
@@ -80,14 +115,36 @@ const TopologyGraph = () => {
   // Get the reactFlow utility functions
   const { project } = useReactFlow();
 
-  // Update nodes when dcs or links change
+  // Update nodes when dcs, sites or links change
   useEffect(() => {
     setNodes(prev => {
       const nodeMap = new Map(prev.map(node => [node.id, node]));
       
-      return dcs.map(dc => {
+      // Update existing site nodes and add new ones
+      const siteNodes = sites.map(site => {
+        const existingNode = nodeMap.get(site.id);
+        return {
+          id: site.id,
+          type: 'site',
+          data: site,
+          position: existingNode ? existingNode.position : { 
+            x: site.x || Math.random() * 500, 
+            y: site.y || 100 
+          },
+          style: { 
+            width: site.width || DEFAULT_SITE_WIDTH,
+            height: site.height || DEFAULT_SITE_HEIGHT,
+            zIndex: 0
+          },
+          draggable: true,
+          selectable: true,
+        };
+      });
+      
+      // Update existing DC nodes and add new ones
+      const dcNodes = dcs.map(dc => {
         const existingNode = nodeMap.get(dc.id);
-        const siteName = sites.find(site => site.id === dc.siteId)?.name || 'Unknown Site';
+        const siteName = sites.find(site => site.id === dc.siteId)?.name || '';
         
         return {
           id: dc.id,
@@ -100,8 +157,14 @@ const TopologyGraph = () => {
             x: dc.x || Math.random() * 500, 
             y: dc.y || Math.random() * 400 
           },
+          parentId: dc.siteId || undefined,
+          draggable: true,
+          selectable: true,
+          zIndex: 1
         };
       });
+      
+      return [...siteNodes, ...dcNodes];
     });
   }, [dcs, sites, setNodes]);
 
@@ -112,7 +175,7 @@ const TopologyGraph = () => {
       source: link.sourceDC,
       target: link.targetDC,
       type: 'replication',
-      data: { isInterSite: link.isInterSite },
+      data: link,
     })));
   }, [links, setEdges]);
 
@@ -121,12 +184,73 @@ const TopologyGraph = () => {
     // Snap to grid
     const snappedPosition = snapToGrid(node.position);
     
-    // Update the store with the new node position
-    updateDC(node.id, { 
-      x: snappedPosition.x,
-      y: snappedPosition.y
-    });
+    // Check if the node is a site
+    if (node.type === 'site') {
+      // Update site position in store
+      useTopologyStore.getState().updateSite(node.id, undefined, {
+        x: snappedPosition.x,
+        y: snappedPosition.y,
+        width: node.style?.width as number || DEFAULT_SITE_WIDTH,
+        height: node.style?.height as number || DEFAULT_SITE_HEIGHT
+      });
+    } else {
+      // Update DC position in store
+      updateDC(node.id, { 
+        x: snappedPosition.x,
+        y: snappedPosition.y
+      });
+    }
   }, [updateDC]);
+  
+  // Handle node resize (for site nodes)
+  const onNodeResize = useCallback((event: React.SyntheticEvent, node: Node, width: number, height: number) => {
+    if (node.type === 'site') {
+      // Update site dimensions in store
+      useTopologyStore.getState().updateSite(node.id, undefined, {
+        width,
+        height
+      });
+    }
+  }, []);
+
+  // Check if a DC is within a site area
+  const checkDCInSite = useCallback((dcNode: Node, siteNodes: Node[]) => {
+    for (const siteNode of siteNodes) {
+      const siteX = siteNode.position.x;
+      const siteY = siteNode.position.y;
+      const siteWidth = (siteNode.style?.width as number) || DEFAULT_SITE_WIDTH;
+      const siteHeight = (siteNode.style?.height as number) || DEFAULT_SITE_HEIGHT;
+      
+      // Check if DC is within site boundaries
+      if (
+        dcNode.position.x >= siteX &&
+        dcNode.position.x <= siteX + siteWidth &&
+        dcNode.position.y >= siteY &&
+        dcNode.position.y <= siteY + siteHeight
+      ) {
+        return siteNode.id;
+      }
+    }
+    return null;
+  }, []);
+  
+  // Handle node drag to check if a DC is being dragged into a site
+  const onNodeDrag = useCallback((event: React.MouseEvent, node: Node) => {
+    if (node.type === 'dc') {
+      // Get all site nodes
+      const siteNodes = nodes.filter(n => n.type === 'site');
+      const siteId = checkDCInSite(node, siteNodes);
+      
+      // If DC is in a site and wasn't previously assigned to it, update
+      if (siteId && node.data.siteId !== siteId) {
+        updateDC(node.id, { siteId });
+      } 
+      // If DC is not in any site but was previously assigned, remove the assignment
+      else if (!siteId && node.data.siteId) {
+        updateDC(node.id, { siteId: "" });
+      }
+    }
+  }, [nodes, updateDC, checkDCInSite]);
 
   // Handle connection start
   const onConnectStart = useCallback((_: React.MouseEvent, { nodeId }: OnConnectStartParams) => {
@@ -150,7 +274,8 @@ const TopologyGraph = () => {
           targetPosition.x > node.position.x &&
           targetPosition.x < node.position.x + (node.width || 150) &&
           targetPosition.y > node.position.y &&
-          targetPosition.y < node.position.y + (node.height || 40)
+          targetPosition.y < node.position.y + (node.height || 40) &&
+          node.type === 'dc' // Only connect to DC nodes
       );
 
       if (targetNode && targetNode.id !== connectingNodeId) {
@@ -180,7 +305,7 @@ const TopologyGraph = () => {
   }, [addLink, canCreateLink]);
 
   return (
-    <div ref={reactFlowWrapper} className="w-full h-[700px] border rounded-md bg-gray-50">
+    <div ref={reactFlowWrapper} className="w-full h-full border rounded-md bg-gray-50">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -190,6 +315,8 @@ const TopologyGraph = () => {
         onConnectStart={onConnectStart}
         onConnectEnd={onConnectEnd}
         onNodeDragStop={onNodeDragStop}
+        onNodeDrag={onNodeDrag}
+        onNodeResize={onNodeResize}
         onInit={setReactFlowInstance}
         connectionMode={ConnectionMode.Loose}
         nodeTypes={nodeTypes}
@@ -200,6 +327,7 @@ const TopologyGraph = () => {
         fitViewOptions={{ padding: 0.2 }}
         minZoom={0.1}
         maxZoom={2}
+        deleteKeyCode={['Backspace', 'Delete']}
       >
         <Controls />
         <Background

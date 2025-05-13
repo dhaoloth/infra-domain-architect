@@ -1,7 +1,7 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Handle, NodeProps, Position } from 'reactflow';
-import { Server, Edit } from 'lucide-react';
+import { Server, Edit, Link } from 'lucide-react';
 import { DC } from '@/types/topology-types';
 import useTopologyStore from '@/store/useTopologyStore';
 import { 
@@ -15,10 +15,18 @@ import {
   PopoverContent,
   PopoverTrigger
 } from '@/components/ui/popover';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import LinkEditor from './LinkEditor';
 
 interface ExtendedDC extends DC {
   siteName: string;
@@ -40,16 +48,25 @@ const DCNode = ({ data, id }: NodeProps<ExtendedDC>) => {
   // State for editing
   const [name, setName] = useState(data.name);
   const [isKey, setIsKey] = useState(data.isKey);
+  const [siteId, setSiteId] = useState(data.siteId);
+  const [showLinkEditor, setShowLinkEditor] = useState(false);
+  
+  useEffect(() => {
+    setName(data.name);
+    setIsKey(data.isKey);
+    setSiteId(data.siteId);
+  }, [data]);
   
   const handleSave = () => {
-    updateDC(id, { name, isKey });
+    updateDC(id, { name, isKey, siteId });
   };
+
+  const bgColorClass = data.isKey ? 'bg-amber-50' : siteId ? 'bg-white' : 'bg-gray-50';
+  const borderColorClass = data.isKey ? 'border-amber-300' : siteId ? 'border-gray-200' : 'border-gray-300';
 
   return (
     <div 
-      className={`px-4 py-3 rounded-md border shadow-sm transition-colors ${
-        data.isKey ? 'bg-amber-50 border-amber-300' : 'bg-white border-gray-200'
-      }`}
+      className={`px-4 py-3 rounded-md shadow-sm transition-colors ${bgColorClass} ${borderColorClass} border`}
     >
       <Handle type="target" position={Position.Top} className="w-3 h-3" />
       <Handle type="source" position={Position.Bottom} className="w-3 h-3" />
@@ -60,11 +77,11 @@ const DCNode = ({ data, id }: NodeProps<ExtendedDC>) => {
         <Tooltip>
           <TooltipTrigger asChild>
             <div className="flex items-center space-x-2">
-              <Server size={18} className={data.isKey ? 'text-amber-600' : 'text-blue-600'} />
+              <Server size={18} className={data.isKey ? 'text-amber-600' : siteId ? 'text-blue-600' : 'text-gray-600'} />
               <div>
                 <div className="font-medium text-sm">{data.name}</div>
                 <div className="text-xs text-gray-500">
-                  {data.siteName}
+                  {data.siteName || 'Unassigned'}
                 </div>
               </div>
             </div>
@@ -73,7 +90,7 @@ const DCNode = ({ data, id }: NodeProps<ExtendedDC>) => {
             <div className="space-y-2">
               <h4 className="font-semibold">{data.name}</h4>
               <div className="text-xs">
-                <p><span className="font-semibold">Site:</span> {data.siteName}</p>
+                <p><span className="font-semibold">Site:</span> {data.siteName || 'Unassigned'}</p>
                 <p><span className="font-semibold">Key DC:</span> {data.isKey ? 'Yes' : 'No'}</p>
                 <p><span className="font-semibold">Connections:</span> {linkCount}/4</p>
                 
@@ -112,7 +129,7 @@ const DCNode = ({ data, id }: NodeProps<ExtendedDC>) => {
             <Edit size={12} />
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-64 p-4" onClick={(e) => e.stopPropagation()}>
+        <PopoverContent className="w-72 p-4" onClick={(e) => e.stopPropagation()}>
           <div className="space-y-4">
             <h4 className="font-medium text-sm">Edit Domain Controller</h4>
             
@@ -126,6 +143,24 @@ const DCNode = ({ data, id }: NodeProps<ExtendedDC>) => {
               />
             </div>
             
+            <div className="space-y-2">
+              <Label htmlFor="dc-site">Assigned Site</Label>
+              <Select 
+                value={siteId} 
+                onValueChange={(value) => setSiteId(value)}
+              >
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue placeholder="Select site" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Unassigned</SelectItem>
+                  {sites.map(site => (
+                    <SelectItem key={site.id} value={site.id}>{site.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
             <div className="flex items-center space-x-2">
               <Checkbox 
                 id="is-key" 
@@ -135,12 +170,31 @@ const DCNode = ({ data, id }: NodeProps<ExtendedDC>) => {
               <Label htmlFor="is-key" className="text-sm font-normal">Key Domain Controller</Label>
             </div>
             
-            <div className="flex justify-end">
+            <div className="pt-2 border-t">
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="w-full"
+                onClick={() => setShowLinkEditor(true)}
+              >
+                <Link size={14} className="mr-2" />
+                Manage Connections
+              </Button>
+            </div>
+            
+            <div className="flex justify-end pt-2">
               <Button size="sm" onClick={handleSave}>Save</Button>
             </div>
           </div>
         </PopoverContent>
       </Popover>
+      
+      {showLinkEditor && (
+        <LinkEditor 
+          dcId={id} 
+          onClose={() => setShowLinkEditor(false)} 
+        />
+      )}
     </div>
   );
 };

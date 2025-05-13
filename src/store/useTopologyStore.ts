@@ -2,6 +2,13 @@
 import { create } from 'zustand';
 import { DC, ReplicationLink, Site, TopologyData, ValidationError } from '@/types/topology-types';
 
+interface SitePosition {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+}
+
 interface TopologyState {
   sites: Site[];
   dcs: DC[];
@@ -10,7 +17,7 @@ interface TopologyState {
   
   // Actions
   addSite: (name: string) => void;
-  updateSite: (id: string, name: string) => void;
+  updateSite: (id: string, name?: string, position?: SitePosition) => void;
   removeSite: (id: string) => void;
   
   addDC: (name: string, siteId: string, isKey: boolean) => void;
@@ -41,18 +48,35 @@ const useTopologyStore = create<TopologyState>((set, get) => ({
     }));
   },
   
-  updateSite: (id: string, name: string) => {
+  updateSite: (id: string, name?: string, position?: SitePosition) => {
     set((state) => ({
-      sites: state.sites.map(site => 
-        site.id === id ? { ...site, name } : site
-      )
+      sites: state.sites.map(site => {
+        if (site.id === id) {
+          return { 
+            ...site, 
+            ...(name !== undefined ? { name } : {}),
+            ...(position?.x !== undefined ? { x: position.x } : {}),
+            ...(position?.y !== undefined ? { y: position.y } : {}),
+            ...(position?.width !== undefined ? { width: position.width } : {}),
+            ...(position?.height !== undefined ? { height: position.height } : {})
+          };
+        }
+        return site;
+      })
     }));
   },
   
   removeSite: (id: string) => {
     // First remove all DCs in this site
     const dcsInSite = get().dcs.filter(dc => dc.siteId === id);
-    dcsInSite.forEach(dc => get().removeDC(dc.id));
+    if (dcsInSite.length > 0) {
+      // Update DCs to have no site
+      set((state) => ({
+        dcs: state.dcs.map(dc => 
+          dc.siteId === id ? { ...dc, siteId: "" } : dc
+        )
+      }));
+    }
     
     set((state) => ({
       sites: state.sites.filter(site => site.id !== id)
@@ -95,7 +119,9 @@ const useTopologyStore = create<TopologyState>((set, get) => ({
     
     if (!sourceDcData || !targetDcData) return;
     
-    const isInterSite = sourceDcData.siteId !== targetDcData.siteId;
+    const isInterSite = sourceDcData.siteId !== targetDcData.siteId || 
+                        sourceDcData.siteId === "" || 
+                        targetDcData.siteId === "";
     const id = `link-${sourceDC}-${targetDC}`;
     
     set((state) => ({
@@ -140,11 +166,15 @@ const useTopologyStore = create<TopologyState>((set, get) => ({
     });
     
     // Check for inter-site connectivity if multiple sites exist
-    if (sites.length > 1) {
+    const sitesWithDCs = sites.filter(site => 
+      dcs.some(dc => dc.siteId === site.id)
+    );
+    
+    if (sitesWithDCs.length > 1) {
       // Create a map of site connections
       const siteConnections = new Map<string, Set<string>>();
       
-      sites.forEach(site => {
+      sitesWithDCs.forEach(site => {
         siteConnections.set(site.id, new Set());
       });
       
@@ -153,7 +183,9 @@ const useTopologyStore = create<TopologyState>((set, get) => ({
         const sourceDC = dcs.find(dc => dc.id === link.sourceDC);
         const targetDC = dcs.find(dc => dc.id === link.targetDC);
         
-        if (sourceDC && targetDC && sourceDC.siteId !== targetDC.siteId) {
+        if (sourceDC && targetDC && 
+            sourceDC.siteId !== targetDC.siteId && 
+            sourceDC.siteId !== "" && targetDC.siteId !== "") {
           const sourceSiteConnections = siteConnections.get(sourceDC.siteId);
           const targetSiteConnections = siteConnections.get(targetDC.siteId);
           
@@ -163,32 +195,34 @@ const useTopologyStore = create<TopologyState>((set, get) => ({
       });
       
       // Check if all sites are connected
-      const visitedSites = new Set<string>();
-      const stack = sites.length > 0 ? [sites[0].id] : [];
-      
-      while (stack.length > 0) {
-        const siteId = stack.pop();
-        if (siteId && !visitedSites.has(siteId)) {
-          visitedSites.add(siteId);
-          
-          const connections = siteConnections.get(siteId);
-          if (connections) {
-            connections.forEach(connectedSite => {
-              if (!visitedSites.has(connectedSite)) {
-                stack.push(connectedSite);
-              }
-            });
+      if (sitesWithDCs.length > 0) {
+        const visitedSites = new Set<string>();
+        const stack = [sitesWithDCs[0].id];
+        
+        while (stack.length > 0) {
+          const siteId = stack.pop();
+          if (siteId && !visitedSites.has(siteId)) {
+            visitedSites.add(siteId);
+            
+            const connections = siteConnections.get(siteId);
+            if (connections) {
+              connections.forEach(connectedSite => {
+                if (!visitedSites.has(connectedSite)) {
+                  stack.push(connectedSite);
+                }
+              });
+            }
           }
         }
-      }
-      
-      if (visitedSites.size !== sites.length) {
-        const unconnectedSites = sites.filter(site => !visitedSites.has(site.id));
-        errors.push({
-          type: 'error',
-          message: `Not all sites are connected. Unreachable sites: ${unconnectedSites.map(s => s.name).join(', ')}`,
-          relatedIds: unconnectedSites.map(s => s.id)
-        });
+        
+        if (visitedSites.size !== sitesWithDCs.length) {
+          const unconnectedSites = sitesWithDCs.filter(site => !visitedSites.has(site.id));
+          errors.push({
+            type: 'error',
+            message: `Not all sites are connected. Unreachable sites: ${unconnectedSites.map(s => s.name).join(', ')}`,
+            relatedIds: unconnectedSites.map(s => s.id)
+          });
+        }
       }
     }
     

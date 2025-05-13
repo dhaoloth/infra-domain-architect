@@ -1,29 +1,47 @@
 
-import { EdgeProps, getBezierPath } from 'reactflow';
+import { useCallback } from 'react';
+import { 
+  BaseEdge, 
+  EdgeProps, 
+  getBezierPath,
+  useReactFlow
+} from 'reactflow';
 import useTopologyStore from '@/store/useTopologyStore';
 
-const ReplicationLinkEdge = ({
-  id,
-  source,
-  target,
-  sourceX,
-  sourceY,
-  targetX,
-  targetY,
-  sourcePosition,
+const ReplicationLinkEdge = ({ 
+  id, 
+  source, 
+  target, 
+  sourceX, 
+  sourceY, 
+  targetX, 
+  targetY, 
+  sourcePosition, 
   targetPosition,
-  data,
+  data
 }: EdgeProps) => {
-  const { removeLink, dcs } = useTopologyStore();
-  const isInterSite = data?.isInterSite;
+  const { dcs, removeLink } = useTopologyStore();
+  const { setEdges } = useReactFlow();
   
-  // Find the source and target DCs
   const sourceDC = dcs.find(dc => dc.id === source);
   const targetDC = dcs.find(dc => dc.id === target);
-  
-  // Check if both DCs are key DCs and it's inter-site
-  const isKeyConnection = isInterSite && sourceDC?.isKey && targetDC?.isKey;
 
+  const isInterSite = sourceDC?.siteId !== targetDC?.siteId || 
+                      sourceDC?.siteId === "" || 
+                      targetDC?.siteId === "";
+                      
+  const isKeyToKey = sourceDC?.isKey && targetDC?.isKey && isInterSite && 
+                     sourceDC?.siteId !== "" && targetDC?.siteId !== "";
+
+  let edgeColor = isKeyToKey ? '#86efac' : // green-300 for key-to-key links
+                  !isInterSite ? '#4b5563' : // gray-600 for intra-site links
+                  '#93c5fd'; // blue-300 for regular inter-site links
+                  
+  let edgeStyle = {
+    strokeWidth: 2,
+    stroke: edgeColor
+  };
+  
   const [edgePath] = getBezierPath({
     sourceX,
     sourceY,
@@ -33,30 +51,21 @@ const ReplicationLinkEdge = ({
     targetPosition,
   });
   
-  // Choose color based on connection type
-  const strokeColor = isKeyConnection 
-    ? '#9333ea' // Purple for key DC inter-site connections
-    : isInterSite 
-      ? '#2563eb' // Blue for regular inter-site connections
-      : '#333333'; // Dark gray for intra-site connections
+  const onEdgeClick = useCallback((event: React.MouseEvent) => {
+    event.stopPropagation();
+    removeLink(id);
+  }, [id, removeLink]);
 
   return (
     <>
-      <path
-        id={id}
-        className="react-flow__edge-path"
-        d={edgePath}
-        strokeWidth={2}
-        stroke={strokeColor}
-        strokeDasharray={isInterSite ? '5,5' : 'none'}
-      />
+      <BaseEdge path={edgePath} style={edgeStyle} />
       <path
         d={edgePath}
-        strokeOpacity={0}
+        stroke="transparent"
         strokeWidth={12}
         fill="none"
-        onClick={() => removeLink(id)}
         className="cursor-pointer"
+        onClick={onEdgeClick}
       />
     </>
   );

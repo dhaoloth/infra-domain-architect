@@ -1,4 +1,13 @@
 
+export interface Site {
+  id: string;
+  name: string;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+}
+
 export interface DC {
   id: string;
   name: string;
@@ -8,11 +17,6 @@ export interface DC {
   y?: number;
 }
 
-export interface Site {
-  id: string;
-  name: string;
-}
-
 export interface ReplicationLink {
   id: string;
   sourceDC: string;
@@ -20,28 +24,14 @@ export interface ReplicationLink {
   isInterSite: boolean;
 }
 
+export interface ValidationError {
+  type: 'warning' | 'error';
+  message: string;
+  relatedIds: string[];
+}
+
 export interface TopologyData {
   sites: Site[];
   dcs: DC[];
   links: ReplicationLink[];
-}
-
-export type ValidationError = {
-  type: 'error' | 'warning';
-  message: string;
-  relatedIds?: string[];
-};
-
-export interface TopologyNode {
-  id: string;
-  type: 'dc';
-  data: DC;
-  position: { x: number, y: number };
-}
-
-export interface TopologyEdge {
-  id: string;
-  source: string;
-  target: string;
-  data: { isInterSite: boolean };
 }

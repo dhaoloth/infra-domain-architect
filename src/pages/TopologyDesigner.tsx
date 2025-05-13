@@ -1,6 +1,5 @@
 
 import Navigation from '@/components/Navigation';
-import SitePanel from '@/components/topology/SitePanel';
 import TopologyGraph from '@/components/topology/TopologyGraph';
 import TopologyControls from '@/components/topology/TopologyControls';
 import { ReactFlowProvider } from 'reactflow';
@@ -13,23 +12,17 @@ const TopologyDesigner = () => {
   const { addSite, addDC } = useTopologyStore();
   
   const handleAddSite = useCallback(() => {
-    const siteName = `Site ${Math.floor(Math.random() * 1000)}`;
+    const siteNumber = Math.floor(Math.random() * 1000);
+    const siteName = `Site ${siteNumber}`;
     addSite(siteName);
   }, [addSite]);
   
   const handleAddDC = useCallback(() => {
-    const dcName = `DC${Math.floor(Math.random() * 100)}`;
-    // If there's at least one site, add to the first site
-    const sites = useTopologyStore.getState().sites;
-    if (sites.length > 0) {
-      addDC(dcName, sites[0].id, false);
-    } else {
-      // Create a site first if none exists
-      const siteId = `site-${Date.now()}`;
-      addSite('Default Site');
-      addDC(dcName, siteId, false);
-    }
-  }, [addSite, addDC]);
+    const dcNumber = Math.floor(Math.random() * 100);
+    const dcName = `DC${dcNumber}`;
+    // Add DC without site assignment initially
+    addDC(dcName, "", false);
+  }, [addDC]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -60,18 +53,13 @@ const TopologyDesigner = () => {
           </div>
         </div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <div className="lg:col-span-1">
-            <SitePanel />
-          </div>
-          
-          <div className="lg:col-span-2 space-y-4">
-            <ReactFlowProvider>
-              <TopologyGraph />
-            </ReactFlowProvider>
-            <TopologyControls />
-          </div>
+        <div className="h-[700px] mb-4">
+          <ReactFlowProvider>
+            <TopologyGraph />
+          </ReactFlowProvider>
         </div>
+        
+        <TopologyControls />
       </main>
       
       <footer className="bg-gray-800 text-white py-4 mt-auto">
