@@ -1,5 +1,6 @@
 
 import InfraCalculator from '@/components/InfraCalculator';
+import Navigation from '@/components/Navigation';
 
 const Index = () => {
   return (
@@ -12,6 +13,7 @@ const Index = () => {
       </header>
       
       <main className="container max-w-6xl mx-auto px-4 py-8">
+        <Navigation />
         <InfraCalculator />
       </main>
       
