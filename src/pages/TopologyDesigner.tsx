@@ -4,8 +4,33 @@ import SitePanel from '@/components/topology/SitePanel';
 import TopologyGraph from '@/components/topology/TopologyGraph';
 import TopologyControls from '@/components/topology/TopologyControls';
 import { ReactFlowProvider } from 'reactflow';
+import { Button } from '@/components/ui/button';
+import { Plus } from 'lucide-react';
+import { useCallback } from 'react';
+import useTopologyStore from '@/store/useTopologyStore';
 
 const TopologyDesigner = () => {
+  const { addSite, addDC } = useTopologyStore();
+  
+  const handleAddSite = useCallback(() => {
+    const siteName = `Site ${Math.floor(Math.random() * 1000)}`;
+    addSite(siteName);
+  }, [addSite]);
+  
+  const handleAddDC = useCallback(() => {
+    const dcName = `DC${Math.floor(Math.random() * 100)}`;
+    // If there's at least one site, add to the first site
+    const sites = useTopologyStore.getState().sites;
+    if (sites.length > 0) {
+      addDC(dcName, sites[0].id, false);
+    } else {
+      // Create a site first if none exists
+      const siteId = `site-${Date.now()}`;
+      addSite('Default Site');
+      addDC(dcName, siteId, false);
+    }
+  }, [addSite, addDC]);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-gradient-to-r from-blue-700 to-blue-900 text-white py-6">
@@ -17,6 +42,23 @@ const TopologyDesigner = () => {
       
       <main className="container max-w-6xl mx-auto px-4 py-8">
         <Navigation />
+        
+        <div className="flex justify-between items-center mb-4">
+          <div>
+            <h2 className="text-xl font-semibold">Topology Designer</h2>
+            <p className="text-sm text-gray-600">Build and visualize your domain controller topology</p>
+          </div>
+          <div className="flex space-x-3">
+            <Button onClick={handleAddSite} variant="outline" size="sm">
+              <Plus className="mr-1 h-4 w-4" />
+              Add Site
+            </Button>
+            <Button onClick={handleAddDC} variant="outline" size="sm">
+              <Plus className="mr-1 h-4 w-4" />
+              Add DC
+            </Button>
+          </div>
+        </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           <div className="lg:col-span-1">

@@ -1,30 +1,97 @@
 
+import { useState } from 'react';
 import { Handle, NodeProps, Position } from 'reactflow';
-import { Server } from 'lucide-react';
+import { Server, Edit } from 'lucide-react';
 import { DC } from '@/types/topology-types';
 import useTopologyStore from '@/store/useTopologyStore';
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger 
+} from '@/components/ui/tooltip';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger
+} from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 
-const DCNode = ({ data, id }: NodeProps<DC>) => {
-  const { sites, getLinkCountForDC } = useTopologyStore();
-  const site = sites.find(site => site.id === data.siteId);
+interface ExtendedDC extends DC {
+  siteName: string;
+}
+
+const DCNode = ({ data, id }: NodeProps<ExtendedDC>) => {
+  const { sites, getLinkCountForDC, dcs, updateDC } = useTopologyStore();
   const linkCount = getLinkCountForDC(id);
+  
+  // Get all connected DCs
+  const connectedDCs = useTopologyStore.getState().links
+    .filter(link => link.sourceDC === id || link.targetDC === id)
+    .map(link => {
+      const connectedId = link.sourceDC === id ? link.targetDC : link.sourceDC;
+      return dcs.find(dc => dc.id === connectedId);
+    })
+    .filter(Boolean) as DC[];
+    
+  // State for editing
+  const [name, setName] = useState(data.name);
+  const [isKey, setIsKey] = useState(data.isKey);
+  
+  const handleSave = () => {
+    updateDC(id, { name, isKey });
+  };
 
   return (
-    <div className={`px-4 py-3 rounded-md border shadow-sm ${data.isKey ? 'bg-amber-50 border-amber-300' : 'bg-white border-gray-200'}`}>
+    <div 
+      className={`px-4 py-3 rounded-md border shadow-sm transition-colors ${
+        data.isKey ? 'bg-amber-50 border-amber-300' : 'bg-white border-gray-200'
+      }`}
+    >
       <Handle type="target" position={Position.Top} className="w-3 h-3" />
       <Handle type="source" position={Position.Bottom} className="w-3 h-3" />
       <Handle type="target" position={Position.Left} className="w-3 h-3" />
       <Handle type="source" position={Position.Right} className="w-3 h-3" />
       
-      <div className="flex items-center space-x-2">
-        <Server size={18} className={data.isKey ? 'text-amber-600' : 'text-blue-600'} />
-        <div>
-          <div className="font-medium text-sm">{data.name}</div>
-          <div className="text-xs text-gray-500">
-            {site?.name || 'Unknown Site'}
-          </div>
-        </div>
-      </div>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex items-center space-x-2">
+              <Server size={18} className={data.isKey ? 'text-amber-600' : 'text-blue-600'} />
+              <div>
+                <div className="font-medium text-sm">{data.name}</div>
+                <div className="text-xs text-gray-500">
+                  {data.siteName}
+                </div>
+              </div>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="right" className="max-w-xs w-64 p-3">
+            <div className="space-y-2">
+              <h4 className="font-semibold">{data.name}</h4>
+              <div className="text-xs">
+                <p><span className="font-semibold">Site:</span> {data.siteName}</p>
+                <p><span className="font-semibold">Key DC:</span> {data.isKey ? 'Yes' : 'No'}</p>
+                <p><span className="font-semibold">Connections:</span> {linkCount}/4</p>
+                
+                {connectedDCs.length > 0 && (
+                  <div className="mt-1">
+                    <p className="font-semibold">Connected to:</p>
+                    <ul className="list-disc list-inside">
+                      {connectedDCs.map(dc => (
+                        <li key={dc.id}>{dc.name}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
       
       <div className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center bg-blue-600 text-white text-xs rounded-full shadow-sm">
         {linkCount}
@@ -35,6 +102,45 @@ const DCNode = ({ data, id }: NodeProps<DC>) => {
           Key
         </div>
       )}
+      
+      <Popover>
+        <PopoverTrigger asChild>
+          <button 
+            className="absolute -bottom-2 -right-2 w-6 h-6 bg-white rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Edit size={12} />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-64 p-4" onClick={(e) => e.stopPropagation()}>
+          <div className="space-y-4">
+            <h4 className="font-medium text-sm">Edit Domain Controller</h4>
+            
+            <div className="space-y-2">
+              <Label htmlFor="dc-name">Name</Label>
+              <Input 
+                id="dc-name" 
+                value={name} 
+                onChange={(e) => setName(e.target.value)} 
+                className="h-8 text-sm"
+              />
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="is-key" 
+                checked={isKey} 
+                onCheckedChange={(checked) => setIsKey(checked === true)} 
+              />
+              <Label htmlFor="is-key" className="text-sm font-normal">Key Domain Controller</Label>
+            </div>
+            
+            <div className="flex justify-end">
+              <Button size="sm" onClick={handleSave}>Save</Button>
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
     </div>
   );
 };

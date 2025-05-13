@@ -14,8 +14,15 @@ const ReplicationLinkEdge = ({
   targetPosition,
   data,
 }: EdgeProps) => {
-  const { removeLink } = useTopologyStore();
+  const { removeLink, dcs } = useTopologyStore();
   const isInterSite = data?.isInterSite;
+  
+  // Find the source and target DCs
+  const sourceDC = dcs.find(dc => dc.id === source);
+  const targetDC = dcs.find(dc => dc.id === target);
+  
+  // Check if both DCs are key DCs and it's inter-site
+  const isKeyConnection = isInterSite && sourceDC?.isKey && targetDC?.isKey;
 
   const [edgePath] = getBezierPath({
     sourceX,
@@ -25,6 +32,13 @@ const ReplicationLinkEdge = ({
     targetY,
     targetPosition,
   });
+  
+  // Choose color based on connection type
+  const strokeColor = isKeyConnection 
+    ? '#9333ea' // Purple for key DC inter-site connections
+    : isInterSite 
+      ? '#2563eb' // Blue for regular inter-site connections
+      : '#333333'; // Dark gray for intra-site connections
 
   return (
     <>
@@ -33,7 +47,7 @@ const ReplicationLinkEdge = ({
         className="react-flow__edge-path"
         d={edgePath}
         strokeWidth={2}
-        stroke={isInterSite ? '#9333ea' : '#2563eb'}
+        stroke={strokeColor}
         strokeDasharray={isInterSite ? '5,5' : 'none'}
       />
       <path

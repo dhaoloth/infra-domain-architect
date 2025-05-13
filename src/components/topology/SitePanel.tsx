@@ -1,162 +1,247 @@
 
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Trash, Network, Server } from 'lucide-react';
-import useTopologyStore from '@/store/useTopologyStore';
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Check, Edit, Plus, X } from 'lucide-react';
+import useTopologyStore from '@/store/useTopologyStore';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const SitePanel = () => {
-  const { sites, dcs, addSite, updateSite, removeSite, addDC, removeDC, updateDC } = useTopologyStore();
+  const { sites, dcs, addSite, addDC, updateSite, removeSite, removeDC, updateDC } = useTopologyStore();
+  
+  // State for new site and DC
   const [newSiteName, setNewSiteName] = useState('');
   const [newDCName, setNewDCName] = useState('');
-  const [selectedSite, setSelectedSite] = useState<string | null>(null);
+  const [newDCSiteId, setNewDCSiteId] = useState('');
   const [isKeyDC, setIsKeyDC] = useState(false);
-
+  
+  // State for editing site name
+  const [editingSiteId, setEditingSiteId] = useState<string | null>(null);
+  const [editingSiteName, setEditingSiteName] = useState('');
+  
   const handleAddSite = () => {
     if (newSiteName.trim()) {
       addSite(newSiteName.trim());
       setNewSiteName('');
     }
   };
-
+  
   const handleAddDC = () => {
-    if (newDCName.trim() && selectedSite) {
-      addDC(newDCName.trim(), selectedSite, isKeyDC);
+    if (newDCName.trim() && newDCSiteId) {
+      addDC(newDCName.trim(), newDCSiteId, isKeyDC);
       setNewDCName('');
       setIsKeyDC(false);
     }
   };
+  
+  const handleEditSite = (siteId: string) => {
+    const site = sites.find(s => s.id === siteId);
+    if (site) {
+      setEditingSiteId(siteId);
+      setEditingSiteName(site.name);
+    }
+  };
+  
+  const handleSaveSite = () => {
+    if (editingSiteId && editingSiteName.trim()) {
+      updateSite(editingSiteId, editingSiteName.trim());
+      setEditingSiteId(null);
+      setEditingSiteName('');
+    }
+  };
+  
+  const handleCancelEdit = () => {
+    setEditingSiteId(null);
+    setEditingSiteName('');
+  };
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Network size={18} />
-          Sites and Domain Controllers
-        </CardTitle>
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-lg font-semibold">Topology Components</CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-6">
-          {/* Add Site */}
-          <div className="space-y-2">
-            <h3 className="text-sm font-medium">Add New Site</h3>
-            <div className="flex space-x-2">
-              <Input
-                placeholder="Site Name"
-                value={newSiteName}
-                onChange={(e) => setNewSiteName(e.target.value)}
-                className="flex-1"
-              />
-              <Button onClick={handleAddSite} size="sm">
-                <Plus size={16} className="mr-1" /> Add Site
+      <CardContent className="px-0">
+        <Tabs defaultValue="sites">
+          <TabsList className="w-full grid grid-cols-2">
+            <TabsTrigger value="sites">Sites</TabsTrigger>
+            <TabsTrigger value="dcs">Domain Controllers</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="sites" className="px-4 pt-4 space-y-4">
+            <div className="flex items-end space-x-2">
+              <div className="flex-1 space-y-1">
+                <Label htmlFor="new-site" className="text-xs">Add New Site</Label>
+                <Input 
+                  id="new-site"
+                  placeholder="Site name" 
+                  value={newSiteName} 
+                  onChange={(e) => setNewSiteName(e.target.value)}
+                  className="h-8 text-sm"
+                />
+              </div>
+              <Button 
+                onClick={handleAddSite} 
+                size="sm" 
+                disabled={!newSiteName.trim()}
+                className="h-8"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add
               </Button>
             </div>
-          </div>
-
-          {/* Site List */}
-          <div className="space-y-2">
-            <h3 className="text-sm font-medium">Existing Sites</h3>
-            {sites.length === 0 ? (
-              <p className="text-sm text-gray-500 italic">No sites created yet.</p>
-            ) : (
-              <div className="space-y-3">
-                {sites.map((site) => (
-                  <div key={site.id} className="border rounded-md p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Input
-                        value={site.name}
-                        onChange={(e) => updateSite(site.id, e.target.value)}
-                        className="flex-1 mr-2"
-                      />
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => removeSite(site.id)}
-                      >
-                        <Trash size={16} />
-                      </Button>
-                    </div>
+            
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium">Sites ({sites.length})</h3>
+              {sites.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No sites defined. Add a site to begin.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {sites.map((site) => {
+                    const siteHasDCs = dcs.some(dc => dc.siteId === site.id);
                     
-                    {/* DCs in this site */}
-                    <div className="pl-2 border-l-2 border-gray-200 space-y-2">
-                      <h4 className="text-xs font-medium flex items-center gap-1">
-                        <Server size={14} /> 
-                        Domain Controllers
-                      </h4>
-                      
-                      {dcs.filter(dc => dc.siteId === site.id).map(dc => (
-                        <div key={dc.id} className="flex items-center space-x-2 text-sm">
-                          <Input
-                            value={dc.name}
-                            onChange={(e) => updateDC(dc.id, { name: e.target.value })}
-                            className="flex-1 h-8 text-sm"
-                          />
-                          <div className="flex items-center space-x-1">
-                            <Switch
-                              id={`key-${dc.id}`}
-                              checked={dc.isKey}
-                              onCheckedChange={(checked) => updateDC(dc.id, { isKey: checked })}
+                    return (
+                      <li key={site.id} className="border rounded-md p-2 text-sm">
+                        {editingSiteId === site.id ? (
+                          <div className="flex items-center space-x-2">
+                            <Input 
+                              value={editingSiteName} 
+                              onChange={(e) => setEditingSiteName(e.target.value)}
+                              className="h-7 text-xs flex-1"
+                              autoFocus
                             />
-                            <Label htmlFor={`key-${dc.id}`} className="text-xs">Key</Label>
+                            <Button size="sm" variant="ghost" onClick={handleSaveSite} className="h-7 w-7 p-0">
+                              <Check className="h-3 w-3" />
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={handleCancelEdit} className="h-7 w-7 p-0">
+                              <X className="h-3 w-3" />
+                            </Button>
                           </div>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            className="h-7 w-7 p-0"
+                        ) : (
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <span className="font-medium">{site.name}</span>
+                              <span className="text-xs text-muted-foreground ml-2">
+                                ({dcs.filter(dc => dc.siteId === site.id).length} DCs)
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                className="h-6 w-6 p-0" 
+                                onClick={() => handleEditSite(site.id)}
+                              >
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                className="h-6 w-6 p-0 text-red-500 hover:text-red-700" 
+                                onClick={() => removeSite(site.id)}
+                                disabled={siteHasDCs}
+                                title={siteHasDCs ? "Remove all DCs first" : "Remove site"}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="dcs" className="px-4 pt-4 space-y-4">
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <Label htmlFor="new-dc" className="text-xs">Add New Domain Controller</Label>
+                <Input 
+                  id="new-dc"
+                  placeholder="DC name" 
+                  value={newDCName} 
+                  onChange={(e) => setNewDCName(e.target.value)}
+                  className="h-8 text-sm"
+                />
+              </div>
+              
+              <div className="space-y-1">
+                <Label htmlFor="new-dc-site" className="text-xs">Site</Label>
+                <select 
+                  id="new-dc-site"
+                  value={newDCSiteId} 
+                  onChange={(e) => setNewDCSiteId(e.target.value)}
+                  className="w-full h-8 text-sm rounded-md border border-input px-3 py-1"
+                  disabled={sites.length === 0}
+                >
+                  <option value="">Select site</option>
+                  {sites.map((site) => (
+                    <option key={site.id} value={site.id}>{site.name}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="new-dc-key" 
+                  checked={isKeyDC} 
+                  onCheckedChange={(checked) => setIsKeyDC(checked === true)}
+                />
+                <Label htmlFor="new-dc-key" className="text-xs">Key Domain Controller</Label>
+              </div>
+              
+              <Button 
+                onClick={handleAddDC} 
+                size="sm" 
+                disabled={!newDCName.trim() || !newDCSiteId || sites.length === 0}
+                className="w-full"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add Domain Controller
+              </Button>
+            </div>
+            
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium">Domain Controllers ({dcs.length})</h3>
+              {dcs.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No domain controllers defined.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {dcs.map((dc) => {
+                    const site = sites.find(s => s.id === dc.siteId);
+                    return (
+                      <li key={dc.id} className={`border rounded-md p-2 text-sm ${dc.isKey ? 'bg-amber-50 border-amber-300' : ''}`}>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <span className="font-medium">{dc.name}</span>
+                            {dc.isKey && <span className="text-[10px] ml-2 bg-amber-400 text-white rounded px-1 py-0.5">KEY</span>}
+                            <div className="text-xs text-muted-foreground">
+                              Site: {site?.name || 'Unknown'}
+                            </div>
+                          </div>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="h-6 w-6 p-0 text-red-500 hover:text-red-700" 
                             onClick={() => removeDC(dc.id)}
+                            title="Remove domain controller"
                           >
-                            <Trash size={14} />
+                            <X className="h-3 w-3" />
                           </Button>
                         </div>
-                      ))}
-                      
-                      {/* Add new DC to this site */}
-                      <div className="flex items-center space-x-2 pt-1">
-                        {site.id === selectedSite ? (
-                          <>
-                            <Input
-                              placeholder="DC Name"
-                              value={newDCName}
-                              onChange={(e) => setNewDCName(e.target.value)}
-                              className="flex-1 h-8 text-sm"
-                            />
-                            <div className="flex items-center space-x-1">
-                              <Switch
-                                id="new-dc-key"
-                                checked={isKeyDC}
-                                onCheckedChange={setIsKeyDC}
-                              />
-                              <Label htmlFor="new-dc-key" className="text-xs">Key</Label>
-                            </div>
-                            <Button
-                              size="sm"
-                              className="h-7"
-                              onClick={handleAddDC}
-                            >
-                              <Plus size={14} />
-                            </Button>
-                          </>
-                        ) : (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-xs h-7 w-full"
-                            onClick={() => setSelectedSite(site.id)}
-                          >
-                            <Plus size={14} className="mr-1" /> Add DC
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   );
