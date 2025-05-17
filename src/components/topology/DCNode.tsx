@@ -50,6 +50,7 @@ const DCNode = ({ data, id }: NodeProps<ExtendedDC>) => {
   const [isKey, setIsKey] = useState(data.isKey);
   const [siteId, setSiteId] = useState(data.siteId || "unassigned");
   const [showLinkEditor, setShowLinkEditor] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   
   useEffect(() => {
     setName(data.name || `DC${Math.floor(Math.random() * 100)}`);
@@ -66,6 +67,7 @@ const DCNode = ({ data, id }: NodeProps<ExtendedDC>) => {
       isKey, 
       siteId: siteId === "unassigned" ? "" : siteId 
     });
+    setIsOpen(false);
   };
 
   const bgColorClass = data.isKey ? 'bg-amber-50' : siteId !== "unassigned" ? 'bg-white' : 'bg-gray-50';
@@ -74,6 +76,7 @@ const DCNode = ({ data, id }: NodeProps<ExtendedDC>) => {
   return (
     <div 
       className={`px-4 py-3 rounded-md shadow-sm transition-colors ${bgColorClass} ${borderColorClass} border`}
+      onClick={() => setIsOpen(true)}
     >
       <Handle type="target" position={Position.Top} className="w-3 h-3" />
       <Handle type="source" position={Position.Bottom} className="w-3 h-3" />
@@ -93,7 +96,7 @@ const DCNode = ({ data, id }: NodeProps<ExtendedDC>) => {
               </div>
             </div>
           </TooltipTrigger>
-          <TooltipContent side="right" className="max-w-xs w-64 p-3">
+          <TooltipContent side="right" className="max-w-xs w-64 p-3 z-50">
             <div className="space-y-2">
               <h4 className="font-semibold">{data.name || 'Unnamed DC'}</h4>
               <div className="text-xs">
@@ -127,16 +130,19 @@ const DCNode = ({ data, id }: NodeProps<ExtendedDC>) => {
         </div>
       )}
       
-      <Popover>
+      <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <button 
             className="absolute -bottom-2 -right-2 w-6 h-6 bg-white rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsOpen(true);
+            }}
           >
             <Edit size={12} />
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-72 p-4" onClick={(e) => e.stopPropagation()}>
+        <PopoverContent className="w-72 p-4 z-50" onClick={(e) => e.stopPropagation()}>
           <div className="space-y-4">
             <h4 className="font-medium text-sm">Edit Domain Controller</h4>
             
@@ -183,7 +189,10 @@ const DCNode = ({ data, id }: NodeProps<ExtendedDC>) => {
                 size="sm" 
                 variant="outline" 
                 className="w-full"
-                onClick={() => setShowLinkEditor(true)}
+                onClick={() => {
+                  setShowLinkEditor(true);
+                  setIsOpen(false);
+                }}
               >
                 <Link size={14} className="mr-2" />
                 Manage Connections

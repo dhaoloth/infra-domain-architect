@@ -15,6 +15,7 @@ import ReactFlow, {
   ReactFlowInstance,
   OnConnectStartParams,
   NodeChange,
+  NodeDimensionChange,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import DCNode from './DCNode';

@@ -53,7 +53,13 @@ const useTopologyStore = create<TopologyState>((set, get) => ({
     const backgroundColor = generateRandomPastelColor();
     
     set((state) => ({
-      sites: [...state.sites, { id, name: siteName, backgroundColor }]
+      sites: [...state.sites, { 
+        id, 
+        name: siteName, 
+        backgroundColor,
+        width: 300,  // Default width
+        height: 200  // Default height
+      }]
     }));
   },
   

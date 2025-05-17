@@ -27,6 +27,7 @@ const generateRandomPastelColor = () => {
 const SiteNode = ({ data, id }: NodeProps<Site>) => {
   const { updateSite, removeSite, dcs } = useTopologyStore();
   const [name, setName] = useState(data.name || `Site ${Math.floor(Math.random() * 1000)}`);
+  const [isOpen, setIsOpen] = useState(false);
   
   // Get DCs in this site
   const sitesDCs = useTopologyStore.getState().dcs.filter(dc => dc.siteId === id);
@@ -38,6 +39,7 @@ const SiteNode = ({ data, id }: NodeProps<Site>) => {
     // Ensure name is not empty
     const siteName = name.trim() ? name : `Site ${Math.floor(Math.random() * 1000)}`;
     updateSite(id, siteName, { backgroundColor });
+    setIsOpen(false);
   };
   
   const handleRemove = () => {
@@ -47,12 +49,18 @@ const SiteNode = ({ data, id }: NodeProps<Site>) => {
     }
   };
 
+  // Handle node resize
+  const onResize = (_, __, width, height) => {
+    updateSite(id, undefined, { width, height });
+  };
+
   return (
     <div 
       className="min-w-[200px] min-h-[150px] border-2 border-dashed border-blue-200 rounded-md p-3 flex flex-col"
       style={{ backgroundColor }}
+      onClick={() => setIsOpen(true)}
     >
-      <NodeResizer minWidth={200} minHeight={150} />
+      <NodeResizer minWidth={200} minHeight={150} onResize={onResize} />
       
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-sm font-medium text-blue-700">{data.name || 'Unnamed Site'}</h3>
@@ -65,7 +73,7 @@ const SiteNode = ({ data, id }: NodeProps<Site>) => {
                   {sitesDCs.length} DCs
                 </div>
               </TooltipTrigger>
-              <TooltipContent side="top" className="p-2">
+              <TooltipContent side="top" className="p-2 z-50">
                 <div className="text-xs">
                   <p className="font-medium">Domain Controllers:</p>
                   {sitesDCs.length > 0 ? (
@@ -82,13 +90,13 @@ const SiteNode = ({ data, id }: NodeProps<Site>) => {
             </Tooltip>
           </TooltipProvider>
           
-          <Popover>
+          <Popover open={isOpen} onOpenChange={setIsOpen}>
             <PopoverTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={e => e.stopPropagation()}>
                 <Edit className="h-3 w-3" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-64" onClick={e => e.stopPropagation()}>
+            <PopoverContent className="w-64 z-50" onClick={e => e.stopPropagation()}>
               <div className="space-y-3">
                 <h3 className="font-medium text-sm">Edit Site</h3>
                 <div>
