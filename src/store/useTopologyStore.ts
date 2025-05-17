@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { DC, ReplicationLink, Site, TopologyData, ValidationError } from '@/types/topology-types';
 
@@ -7,6 +6,7 @@ interface SitePosition {
   y?: number;
   width?: number;
   height?: number;
+  backgroundColor?: string;
 }
 
 interface TopologyState {
@@ -35,6 +35,12 @@ interface TopologyState {
   canCreateLink: (sourceDC: string, targetDC: string) => boolean;
 }
 
+// Generate a random pastel color for site backgrounds
+const generateRandomPastelColor = () => {
+  const hue = Math.floor(Math.random() * 360);
+  return `hsla(${hue}, 70%, 90%, 0.3)`;
+};
+
 const useTopologyStore = create<TopologyState>((set, get) => ({
   sites: [],
   dcs: [],
@@ -43,8 +49,11 @@ const useTopologyStore = create<TopologyState>((set, get) => ({
   
   addSite: (name: string) => {
     const id = `site-${Date.now()}`;
+    const siteName = name || `Site ${Math.floor(Math.random() * 1000)}`;
+    const backgroundColor = generateRandomPastelColor();
+    
     set((state) => ({
-      sites: [...state.sites, { id, name }]
+      sites: [...state.sites, { id, name: siteName, backgroundColor }]
     }));
   },
   
@@ -58,7 +67,8 @@ const useTopologyStore = create<TopologyState>((set, get) => ({
             ...(position?.x !== undefined ? { x: position.x } : {}),
             ...(position?.y !== undefined ? { y: position.y } : {}),
             ...(position?.width !== undefined ? { width: position.width } : {}),
-            ...(position?.height !== undefined ? { height: position.height } : {})
+            ...(position?.height !== undefined ? { height: position.height } : {}),
+            ...(position?.backgroundColor !== undefined ? { backgroundColor: position.backgroundColor } : {})
           };
         }
         return site;
@@ -85,8 +95,9 @@ const useTopologyStore = create<TopologyState>((set, get) => ({
   
   addDC: (name: string, siteId: string, isKey: boolean) => {
     const id = `dc-${Date.now()}`;
+    const dcName = name || `DC${Math.floor(Math.random() * 100)}`;
     set((state) => ({
-      dcs: [...state.dcs, { id, name, siteId, isKey }]
+      dcs: [...state.dcs, { id, name: dcName, siteId, isKey }]
     }));
   },
   

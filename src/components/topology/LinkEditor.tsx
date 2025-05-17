@@ -26,7 +26,7 @@ interface LinkEditorProps {
 
 const LinkEditor = ({ dcId, onClose }: LinkEditorProps) => {
   const { sites, dcs, links, addLink, removeLink, canCreateLink } = useTopologyStore();
-  const [selectedSiteId, setSelectedSiteId] = useState<string>("");
+  const [selectedSiteId, setSelectedSiteId] = useState<string>("all-sites");
   const [selectedDcId, setSelectedDcId] = useState<string>("");
   
   const currentDC = dcs.find(dc => dc.id === dcId);
@@ -39,7 +39,13 @@ const LinkEditor = ({ dcId, onClose }: LinkEditorProps) => {
       if (dc.id === dcId) return false;
       
       // Skip DCs that don't match the selected site filter
-      if (selectedSiteId && dc.siteId !== selectedSiteId && dc.siteId !== "") return false;
+      if (selectedSiteId !== "all-sites") {
+        if (selectedSiteId === "unassigned" && dc.siteId !== "") {
+          return false;
+        } else if (selectedSiteId !== "unassigned" && dc.siteId !== selectedSiteId) {
+          return false;
+        }
+      }
       
       // Skip if already connected
       const alreadyConnected = links.some(link => 
@@ -83,7 +89,7 @@ const LinkEditor = ({ dcId, onClose }: LinkEditorProps) => {
         <DialogHeader>
           <DialogTitle>Manage DC Connections</DialogTitle>
           <DialogDescription>
-            Create or remove replication links for {currentDC?.name}
+            Create or remove replication links for {currentDC?.name || 'this Domain Controller'}
           </DialogDescription>
         </DialogHeader>
         
@@ -135,10 +141,10 @@ const LinkEditor = ({ dcId, onClose }: LinkEditorProps) => {
                 <Label htmlFor="filter-site" className="text-xs">Filter by Site</Label>
                 <Select value={selectedSiteId} onValueChange={setSelectedSiteId}>
                   <SelectTrigger id="filter-site" className="h-8 text-sm">
-                    <SelectValue placeholder="All sites" />
+                    <SelectValue placeholder="Select site filter" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All sites</SelectItem>
+                    <SelectItem value="all-sites">All sites</SelectItem>
                     <SelectItem value="unassigned">Unassigned DCs</SelectItem>
                     {sites.map(site => (
                       <SelectItem key={site.id} value={site.id}>{site.name}</SelectItem>
@@ -168,7 +174,7 @@ const LinkEditor = ({ dcId, onClose }: LinkEditorProps) => {
                         );
                       })}
                       {availableDCs.length === 0 && (
-                        <SelectItem value="none" disabled>No available DCs</SelectItem>
+                        <SelectItem value="no-available-dcs" disabled>No available DCs</SelectItem>
                       )}
                     </SelectContent>
                   </Select>

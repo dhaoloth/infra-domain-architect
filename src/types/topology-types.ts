@@ -6,6 +6,7 @@ export interface Site {
   y?: number;
   width?: number;
   height?: number;
+  backgroundColor?: string;
 }
 
 export interface DC {

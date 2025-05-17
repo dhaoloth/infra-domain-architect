@@ -18,15 +18,26 @@ import {
   TooltipTrigger 
 } from '@/components/ui/tooltip';
 
-const SiteNode = ({ data, id }: NodeProps<Site>) => {
+// Generate a random pastel color for site backgrounds
+const generateRandomPastelColor = () => {
+  const hue = Math.floor(Math.random() * 360);
+  return `hsla(${hue}, 70%, 90%, 0.3)`;
+};
+
+const SiteNode = ({ data, id, style }: NodeProps<Site>) => {
   const { updateSite, removeSite, dcs } = useTopologyStore();
-  const [name, setName] = useState(data.name);
+  const [name, setName] = useState(data.name || `Site ${Math.floor(Math.random() * 1000)}`);
   
   // Get DCs in this site
   const sitesDCs = useTopologyStore.getState().dcs.filter(dc => dc.siteId === id);
   
+  // Use the background color from the data or generate a new one
+  const backgroundColor = data.backgroundColor || style?.backgroundColor || generateRandomPastelColor();
+  
   const handleSave = () => {
-    updateSite(id, name);
+    // Ensure name is not empty
+    const siteName = name.trim() ? name : `Site ${Math.floor(Math.random() * 1000)}`;
+    updateSite(id, siteName, { backgroundColor });
   };
   
   const handleRemove = () => {
@@ -37,11 +48,14 @@ const SiteNode = ({ data, id }: NodeProps<Site>) => {
   };
 
   return (
-    <div className="min-w-[200px] min-h-[150px] border-2 border-dashed border-blue-200 bg-blue-50/30 rounded-md p-3 flex flex-col">
+    <div 
+      className="min-w-[200px] min-h-[150px] border-2 border-dashed border-blue-200 rounded-md p-3 flex flex-col"
+      style={{ backgroundColor }}
+    >
       <NodeResizer minWidth={200} minHeight={150} />
       
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-medium text-blue-700">{data.name}</h3>
+        <h3 className="text-sm font-medium text-blue-700">{data.name || 'Unnamed Site'}</h3>
         
         <div className="flex items-center space-x-1">
           <TooltipProvider>
@@ -57,7 +71,7 @@ const SiteNode = ({ data, id }: NodeProps<Site>) => {
                   {sitesDCs.length > 0 ? (
                     <ul className="list-disc pl-4 mt-1">
                       {sitesDCs.map(dc => (
-                        <li key={dc.id}>{dc.name}</li>
+                        <li key={dc.id}>{dc.name || 'Unnamed DC'}</li>
                       ))}
                     </ul>
                   ) : (
@@ -83,6 +97,7 @@ const SiteNode = ({ data, id }: NodeProps<Site>) => {
                     value={name}
                     onChange={e => setName(e.target.value)}
                     className="h-8 text-sm"
+                    placeholder={`Site ${Math.floor(Math.random() * 1000)}`}
                   />
                 </div>
                 <div className="flex justify-between">

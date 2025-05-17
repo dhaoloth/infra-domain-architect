@@ -14,6 +14,7 @@ import ReactFlow, {
   BackgroundVariant,
   ReactFlowInstance,
   OnConnectStartParams,
+  NodeChange,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import DCNode from './DCNode';
@@ -46,6 +47,12 @@ const snapToGrid = (position: { x: number, y: number }) => {
 const DEFAULT_SITE_WIDTH = 300;
 const DEFAULT_SITE_HEIGHT = 200;
 
+// Generate a random pastel color for site backgrounds
+const generateRandomPastelColor = () => {
+  const hue = Math.floor(Math.random() * 360);
+  return `hsla(${hue}, 70%, 90%, 0.3)`;
+};
+
 const TopologyGraph = () => {
   const { 
     dcs, 
@@ -66,7 +73,10 @@ const TopologyGraph = () => {
     const siteNodes = sites.map((site, index) => ({
       id: site.id,
       type: 'site',
-      data: site,
+      data: {
+        ...site,
+        backgroundColor: site.backgroundColor || generateRandomPastelColor()
+      },
       position: { 
         x: site.x || (index * 350) + 50, 
         y: site.y || 100 
@@ -123,10 +133,15 @@ const TopologyGraph = () => {
       // Update existing site nodes and add new ones
       const siteNodes = sites.map(site => {
         const existingNode = nodeMap.get(site.id);
+        const backgroundColor = site.backgroundColor || generateRandomPastelColor();
+        
         return {
           id: site.id,
           type: 'site',
-          data: site,
+          data: {
+            ...site,
+            backgroundColor
+          },
           position: existingNode ? existingNode.position : { 
             x: site.x || Math.random() * 500, 
             y: site.y || 100 
@@ -134,7 +149,8 @@ const TopologyGraph = () => {
           style: { 
             width: site.width || DEFAULT_SITE_WIDTH,
             height: site.height || DEFAULT_SITE_HEIGHT,
-            zIndex: 0
+            zIndex: 0,
+            backgroundColor
           },
           draggable: true,
           selectable: true,
@@ -203,7 +219,7 @@ const TopologyGraph = () => {
   }, [updateDC]);
   
   // Handle node resize (for site nodes)
-  const onNodeResize = useCallback((event: React.SyntheticEvent, node: Node, width: number, height: number) => {
+  const handleNodeResize = useCallback((event: React.SyntheticEvent, node: Node, width: number, height: number) => {
     if (node.type === 'site') {
       // Update site dimensions in store
       useTopologyStore.getState().updateSite(node.id, undefined, {
@@ -316,7 +332,6 @@ const TopologyGraph = () => {
         onConnectEnd={onConnectEnd}
         onNodeDragStop={onNodeDragStop}
         onNodeDrag={onNodeDrag}
-        onNodeResize={onNodeResize}
         onInit={setReactFlowInstance}
         connectionMode={ConnectionMode.Loose}
         nodeTypes={nodeTypes}
@@ -328,6 +343,7 @@ const TopologyGraph = () => {
         minZoom={0.1}
         maxZoom={2}
         deleteKeyCode={['Backspace', 'Delete']}
+        onNodeResize={handleNodeResize}
       >
         <Controls />
         <Background

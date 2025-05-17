@@ -46,23 +46,30 @@ const DCNode = ({ data, id }: NodeProps<ExtendedDC>) => {
     .filter(Boolean) as DC[];
     
   // State for editing
-  const [name, setName] = useState(data.name);
+  const [name, setName] = useState(data.name || `DC${Math.floor(Math.random() * 100)}`);
   const [isKey, setIsKey] = useState(data.isKey);
-  const [siteId, setSiteId] = useState(data.siteId);
+  const [siteId, setSiteId] = useState(data.siteId || "unassigned");
   const [showLinkEditor, setShowLinkEditor] = useState(false);
   
   useEffect(() => {
-    setName(data.name);
+    setName(data.name || `DC${Math.floor(Math.random() * 100)}`);
     setIsKey(data.isKey);
-    setSiteId(data.siteId);
+    setSiteId(data.siteId || "unassigned");
   }, [data]);
   
   const handleSave = () => {
-    updateDC(id, { name, isKey, siteId });
+    // Ensure name is not empty
+    const dcName = name.trim() ? name : `DC${Math.floor(Math.random() * 100)}`;
+    // Update the DC with validated data
+    updateDC(id, { 
+      name: dcName, 
+      isKey, 
+      siteId: siteId === "unassigned" ? "" : siteId 
+    });
   };
 
-  const bgColorClass = data.isKey ? 'bg-amber-50' : siteId ? 'bg-white' : 'bg-gray-50';
-  const borderColorClass = data.isKey ? 'border-amber-300' : siteId ? 'border-gray-200' : 'border-gray-300';
+  const bgColorClass = data.isKey ? 'bg-amber-50' : siteId !== "unassigned" ? 'bg-white' : 'bg-gray-50';
+  const borderColorClass = data.isKey ? 'border-amber-300' : siteId !== "unassigned" ? 'border-gray-200' : 'border-gray-300';
 
   return (
     <div 
@@ -77,9 +84,9 @@ const DCNode = ({ data, id }: NodeProps<ExtendedDC>) => {
         <Tooltip>
           <TooltipTrigger asChild>
             <div className="flex items-center space-x-2">
-              <Server size={18} className={data.isKey ? 'text-amber-600' : siteId ? 'text-blue-600' : 'text-gray-600'} />
+              <Server size={18} className={data.isKey ? 'text-amber-600' : siteId !== "unassigned" ? 'text-blue-600' : 'text-gray-600'} />
               <div>
-                <div className="font-medium text-sm">{data.name}</div>
+                <div className="font-medium text-sm">{data.name || 'Unnamed DC'}</div>
                 <div className="text-xs text-gray-500">
                   {data.siteName || 'Unassigned'}
                 </div>
@@ -88,7 +95,7 @@ const DCNode = ({ data, id }: NodeProps<ExtendedDC>) => {
           </TooltipTrigger>
           <TooltipContent side="right" className="max-w-xs w-64 p-3">
             <div className="space-y-2">
-              <h4 className="font-semibold">{data.name}</h4>
+              <h4 className="font-semibold">{data.name || 'Unnamed DC'}</h4>
               <div className="text-xs">
                 <p><span className="font-semibold">Site:</span> {data.siteName || 'Unassigned'}</p>
                 <p><span className="font-semibold">Key DC:</span> {data.isKey ? 'Yes' : 'No'}</p>
@@ -99,7 +106,7 @@ const DCNode = ({ data, id }: NodeProps<ExtendedDC>) => {
                     <p className="font-semibold">Connected to:</p>
                     <ul className="list-disc list-inside">
                       {connectedDCs.map(dc => (
-                        <li key={dc.id}>{dc.name}</li>
+                        <li key={dc.id}>{dc.name || 'Unnamed DC'}</li>
                       ))}
                     </ul>
                   </div>
@@ -140,22 +147,23 @@ const DCNode = ({ data, id }: NodeProps<ExtendedDC>) => {
                 value={name} 
                 onChange={(e) => setName(e.target.value)} 
                 className="h-8 text-sm"
+                placeholder={`DC${Math.floor(Math.random() * 100)}`}
               />
             </div>
             
             <div className="space-y-2">
               <Label htmlFor="dc-site">Assigned Site</Label>
               <Select 
-                value={siteId} 
+                value={siteId === "" ? "unassigned" : siteId} 
                 onValueChange={(value) => setSiteId(value)}
               >
                 <SelectTrigger className="h-8 text-sm">
                   <SelectValue placeholder="Select site" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Unassigned</SelectItem>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
                   {sites.map(site => (
-                    <SelectItem key={site.id} value={site.id}>{site.name}</SelectItem>
+                    <SelectItem key={site.id} value={site.id}>{site.name || 'Unnamed Site'}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
