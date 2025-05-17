@@ -76,7 +76,10 @@ const DCNode = ({ data, id }: NodeProps<ExtendedDC>) => {
   return (
     <div 
       className={`px-4 py-3 rounded-md shadow-sm transition-colors ${bgColorClass} ${borderColorClass} border`}
-      onClick={() => setIsOpen(true)}
+      onClick={(e) => {
+        e.stopPropagation();
+        setIsOpen(true);
+      }}
     >
       <Handle type="target" position={Position.Top} className="w-3 h-3" />
       <Handle type="source" position={Position.Bottom} className="w-3 h-3" />
@@ -96,7 +99,7 @@ const DCNode = ({ data, id }: NodeProps<ExtendedDC>) => {
               </div>
             </div>
           </TooltipTrigger>
-          <TooltipContent side="right" className="max-w-xs w-64 p-3 z-50">
+          <TooltipContent side="right" className="max-w-xs w-64 p-3 z-[100]">
             <div className="space-y-2">
               <h4 className="font-semibold">{data.name || 'Unnamed DC'}</h4>
               <div className="text-xs">
@@ -142,7 +145,7 @@ const DCNode = ({ data, id }: NodeProps<ExtendedDC>) => {
             <Edit size={12} />
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-72 p-4 z-50" onClick={(e) => e.stopPropagation()}>
+        <PopoverContent className="w-72 p-4 z-[100]" onClick={(e) => e.stopPropagation()}>
           <div className="space-y-4">
             <h4 className="font-medium text-sm">Edit Domain Controller</h4>
             

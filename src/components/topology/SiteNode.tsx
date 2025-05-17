@@ -49,8 +49,8 @@ const SiteNode = ({ data, id }: NodeProps<Site>) => {
     }
   };
 
-  // Handle node resize
-  const onResize = (_, __, width, height) => {
+  // Handle node resize - fixed TypeScript error by defining proper signature
+  const onResize = (_: React.MouseEvent, __: Node, width: number, height: number) => {
     updateSite(id, undefined, { width, height });
   };
 
@@ -58,7 +58,10 @@ const SiteNode = ({ data, id }: NodeProps<Site>) => {
     <div 
       className="min-w-[200px] min-h-[150px] border-2 border-dashed border-blue-200 rounded-md p-3 flex flex-col"
       style={{ backgroundColor }}
-      onClick={() => setIsOpen(true)}
+      onClick={(e) => {
+        e.stopPropagation();
+        setIsOpen(true);
+      }}
     >
       <NodeResizer minWidth={200} minHeight={150} onResize={onResize} />
       
@@ -73,7 +76,7 @@ const SiteNode = ({ data, id }: NodeProps<Site>) => {
                   {sitesDCs.length} DCs
                 </div>
               </TooltipTrigger>
-              <TooltipContent side="top" className="p-2 z-50">
+              <TooltipContent side="top" className="p-2 z-[100]">
                 <div className="text-xs">
                   <p className="font-medium">Domain Controllers:</p>
                   {sitesDCs.length > 0 ? (
@@ -96,7 +99,7 @@ const SiteNode = ({ data, id }: NodeProps<Site>) => {
                 <Edit className="h-3 w-3" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-64 z-50" onClick={e => e.stopPropagation()}>
+            <PopoverContent className="w-64 z-[100]" onClick={e => e.stopPropagation()}>
               <div className="space-y-3">
                 <h3 className="font-medium text-sm">Edit Site</h3>
                 <div>

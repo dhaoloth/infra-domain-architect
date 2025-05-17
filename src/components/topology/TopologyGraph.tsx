@@ -342,7 +342,7 @@ const TopologyGraph = () => {
   }, [addLink, canCreateLink]);
 
   return (
-    <div ref={reactFlowWrapper} className="w-full h-full border rounded-md bg-gray-50">
+    <div ref={reactFlowWrapper} className="w-full h-full bg-white">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -370,6 +370,7 @@ const TopologyGraph = () => {
           variant={BackgroundVariant.Dots}
           gap={GRID_SIZE}
           size={1}
+          color="#e0e0e0"
         />
       </ReactFlow>
     </div>
