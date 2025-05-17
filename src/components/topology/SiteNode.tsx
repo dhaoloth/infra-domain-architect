@@ -49,16 +49,15 @@ const SiteNode = ({ data, id }: NodeProps<Site>) => {
     }
   };
 
-  // Using the correctly typed onResize function based on ReactFlow's NodeResizer requirements
+  // Properly defined onResize function for ReactFlow's NodeResizer
   const onResize = (
     _: React.MouseEvent<Element, MouseEvent>,
     _nodeId: string,
     _direction: any,
     _isDone: boolean
   ) => {
-    // In this implementation, we need to access the node dimensions from the DOM or state
-    // since ReactFlow passes them differently than what we expected
-    // We'll use a setTimeout to ensure the node has been resized in the DOM before we measure it
+    // Since the actual dimensions aren't directly passed in ReactFlow v11,
+    // we need to get them from the DOM after the resize is completed
     setTimeout(() => {
       const nodeElement = document.querySelector(`[data-id="${id}"]`);
       if (nodeElement) {
@@ -158,3 +157,4 @@ const SiteNode = ({ data, id }: NodeProps<Site>) => {
 };
 
 export default SiteNode;
+
