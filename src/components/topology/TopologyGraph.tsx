@@ -23,6 +23,8 @@ import SiteNode from './SiteNode';
 import ReplicationLinkEdge from './ReplicationLinkEdge';
 import useTopologyStore from '@/store/useTopologyStore';
 import { toast } from 'sonner';
+import SiteEditModal from './SiteEditModal';
+import DCEditModal from './DCEditModal';
 
 const nodeTypes = {
   dc: DCNode,
@@ -67,6 +69,12 @@ const TopologyGraph = () => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
   const [connectingNodeId, setConnectingNodeId] = useState<string | null>(null);
+  
+  // State for edit modals
+  const [selectedSite, setSelectedSite] = useState<string | null>(null);
+  const [siteModalOpen, setSiteModalOpen] = useState(false);
+  const [selectedDC, setSelectedDC] = useState<string | null>(null);
+  const [dcModalOpen, setDcModalOpen] = useState(false);
 
   // Convert store data to ReactFlow nodes and edges
   const initialNodes: Node[] = useMemo(() => {
@@ -76,7 +84,11 @@ const TopologyGraph = () => {
       type: 'site',
       data: {
         ...site,
-        backgroundColor: site.backgroundColor || generateRandomPastelColor()
+        backgroundColor: site.backgroundColor || generateRandomPastelColor(),
+        onSiteClick: (siteId: string) => {
+          setSelectedSite(siteId);
+          setSiteModalOpen(true);
+        }
       },
       position: { 
         x: site.x || (index * 350) + 50, 
@@ -97,7 +109,11 @@ const TopologyGraph = () => {
       type: 'dc',
       data: { 
         ...dc, 
-        siteName: sites.find(site => site.id === dc.siteId)?.name || '', 
+        siteName: sites.find(site => site.id === dc.siteId)?.name || '',
+        onDCClick: (dcId: string) => {
+          setSelectedDC(dcId);
+          setDcModalOpen(true);
+        }
       },
       position: { 
         x: dc.x || Math.random() * 500, 
@@ -141,7 +157,11 @@ const TopologyGraph = () => {
           type: 'site',
           data: {
             ...site,
-            backgroundColor
+            backgroundColor,
+            onSiteClick: (siteId: string) => {
+              setSelectedSite(siteId);
+              setSiteModalOpen(true);
+            }
           },
           position: existingNode ? existingNode.position : { 
             x: site.x || Math.random() * 500, 
@@ -169,6 +189,10 @@ const TopologyGraph = () => {
           data: { 
             ...dc,
             siteName,
+            onDCClick: (dcId: string) => {
+              setSelectedDC(dcId);
+              setDcModalOpen(true);
+            }
           },
           position: existingNode ? existingNode.position : { 
             x: dc.x || Math.random() * 500, 
@@ -373,6 +397,20 @@ const TopologyGraph = () => {
           color="#e0e0e0"
         />
       </ReactFlow>
+      
+      {/* Site Edit Modal */}
+      <SiteEditModal 
+        siteId={selectedSite}
+        open={siteModalOpen}
+        onOpenChange={setSiteModalOpen}
+      />
+      
+      {/* DC Edit Modal */}
+      <DCEditModal
+        dcId={selectedDC}
+        open={dcModalOpen}
+        onOpenChange={setDcModalOpen}
+      />
     </div>
   );
 };

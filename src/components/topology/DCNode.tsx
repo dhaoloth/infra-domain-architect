@@ -1,7 +1,7 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Handle, NodeProps, Position } from 'reactflow';
-import { Server, Edit, Link } from 'lucide-react';
+import { Server } from 'lucide-react';
 import { DC } from '@/types/topology-types';
 import useTopologyStore from '@/store/useTopologyStore';
 import { 
@@ -10,30 +10,14 @@ import {
   TooltipProvider,
   TooltipTrigger 
 } from '@/components/ui/tooltip';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger
-} from '@/components/ui/popover';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
-import LinkEditor from './LinkEditor';
 
 interface ExtendedDC extends DC {
   siteName: string;
+  onDCClick?: (dcId: string) => void;
 }
 
 const DCNode = ({ data, id }: NodeProps<ExtendedDC>) => {
-  const { sites, getLinkCountForDC, dcs, updateDC } = useTopologyStore();
+  const { getLinkCountForDC, dcs } = useTopologyStore();
   const linkCount = getLinkCountForDC(id);
   
   // Get all connected DCs
@@ -45,41 +29,23 @@ const DCNode = ({ data, id }: NodeProps<ExtendedDC>) => {
     })
     .filter(Boolean) as DC[];
     
-  // State for editing
-  const [name, setName] = useState(data.name || `DC${Math.floor(Math.random() * 100)}`);
-  const [isKey, setIsKey] = useState(data.isKey);
-  const [siteId, setSiteId] = useState(data.siteId || "unassigned");
-  const [showLinkEditor, setShowLinkEditor] = useState(false);
-  const [isOpen, setIsOpen] = useState(false);
-  
-  useEffect(() => {
-    setName(data.name || `DC${Math.floor(Math.random() * 100)}`);
-    setIsKey(data.isKey);
-    setSiteId(data.siteId || "unassigned");
-  }, [data]);
-  
-  const handleSave = () => {
-    // Ensure name is not empty
-    const dcName = name.trim() ? name : `DC${Math.floor(Math.random() * 100)}`;
-    // Update the DC with validated data
-    updateDC(id, { 
-      name: dcName, 
-      isKey, 
-      siteId: siteId === "unassigned" ? "" : siteId 
-    });
-    setIsOpen(false);
-  };
+  // Get site ID for styling
+  const siteId = data.siteId || "unassigned";
 
   const bgColorClass = data.isKey ? 'bg-amber-50' : siteId !== "unassigned" ? 'bg-white' : 'bg-gray-50';
   const borderColorClass = data.isKey ? 'border-amber-300' : siteId !== "unassigned" ? 'border-gray-200' : 'border-gray-300';
 
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (data.onDCClick) {
+      data.onDCClick(id);
+    }
+  };
+
   return (
     <div 
-      className={`px-4 py-3 rounded-md shadow-sm transition-colors ${bgColorClass} ${borderColorClass} border`}
-      onClick={(e) => {
-        e.stopPropagation();
-        setIsOpen(true);
-      }}
+      className={`px-4 py-3 rounded-md shadow-sm transition-colors ${bgColorClass} ${borderColorClass} border cursor-pointer`}
+      onClick={handleClick}
     >
       <Handle type="target" position={Position.Top} className="w-3 h-3" />
       <Handle type="source" position={Position.Bottom} className="w-3 h-3" />
@@ -131,89 +97,6 @@ const DCNode = ({ data, id }: NodeProps<ExtendedDC>) => {
         <div className="absolute -top-1 -left-1 px-1 py-0.5 text-[10px] bg-amber-400 text-white rounded">
           Key
         </div>
-      )}
-      
-      <Popover open={isOpen} onOpenChange={setIsOpen}>
-        <PopoverTrigger asChild>
-          <button 
-            className="absolute -bottom-2 -right-2 w-6 h-6 bg-white rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsOpen(true);
-            }}
-          >
-            <Edit size={12} />
-          </button>
-        </PopoverTrigger>
-        <PopoverContent className="w-72 p-4 z-[100]" onClick={(e) => e.stopPropagation()}>
-          <div className="space-y-4">
-            <h4 className="font-medium text-sm">Edit Domain Controller</h4>
-            
-            <div className="space-y-2">
-              <Label htmlFor="dc-name">Name</Label>
-              <Input 
-                id="dc-name" 
-                value={name} 
-                onChange={(e) => setName(e.target.value)} 
-                className="h-8 text-sm"
-                placeholder={`DC${Math.floor(Math.random() * 100)}`}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="dc-site">Assigned Site</Label>
-              <Select 
-                value={siteId === "" ? "unassigned" : siteId} 
-                onValueChange={(value) => setSiteId(value)}
-              >
-                <SelectTrigger className="h-8 text-sm">
-                  <SelectValue placeholder="Select site" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unassigned">Unassigned</SelectItem>
-                  {sites.map(site => (
-                    <SelectItem key={site.id} value={site.id}>{site.name || 'Unnamed Site'}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Checkbox 
-                id="is-key" 
-                checked={isKey} 
-                onCheckedChange={(checked) => setIsKey(checked === true)} 
-              />
-              <Label htmlFor="is-key" className="text-sm font-normal">Key Domain Controller</Label>
-            </div>
-            
-            <div className="pt-2 border-t">
-              <Button 
-                size="sm" 
-                variant="outline" 
-                className="w-full"
-                onClick={() => {
-                  setShowLinkEditor(true);
-                  setIsOpen(false);
-                }}
-              >
-                <Link size={14} className="mr-2" />
-                Manage Connections
-              </Button>
-            </div>
-            
-            <div className="flex justify-end pt-2">
-              <Button size="sm" onClick={handleSave}>Save</Button>
-            </div>
-          </div>
-        </PopoverContent>
-      </Popover>
-      
-      {showLinkEditor && (
-        <LinkEditor 
-          dcId={id} 
-          onClose={() => setShowLinkEditor(false)} 
-        />
       )}
     </div>
   );

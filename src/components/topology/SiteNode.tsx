@@ -49,9 +49,14 @@ const SiteNode = ({ data, id }: NodeProps<Site>) => {
     }
   };
 
-  // Handle node resize - fixed TypeScript error by defining proper signature
-  const onResize = (_: React.MouseEvent, __: Node, width: number, height: number) => {
-    updateSite(id, undefined, { width, height });
+  // Handle node resize with correct TypeScript signature
+  const onResize = (_: React.MouseEvent, _node: any, params: { width?: number; height?: number }) => {
+    if (params.width && params.height) {
+      updateSite(id, undefined, { 
+        width: params.width, 
+        height: params.height 
+      });
+    }
   };
 
   return (
