@@ -49,8 +49,8 @@ const SiteNode = ({ data, id }: NodeProps<Site>) => {
     }
   };
 
-  // Updated to match ReactFlow's OnResize type which expects 3 arguments
-  const onResize = (event: React.MouseEvent, nodeId: string, params: { width: number; height: number }) => {
+  // Updated to match ReactFlow's NodeResizer onResize callback type
+  const onResize = (_: React.MouseEvent, _nodeId: string, direction: any, isDone: boolean, params: { width: number; height: number }) => {
     // Extract width and height from the params
     const { width, height } = params;
     if (width && height) {
