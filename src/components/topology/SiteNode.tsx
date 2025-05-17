@@ -49,12 +49,14 @@ const SiteNode = ({ data, id }: NodeProps<Site>) => {
     }
   };
 
-  // Handle node resize with correct TypeScript signature
-  const onResize = (_: React.MouseEvent, _node: any, params: { width?: number; height?: number }) => {
-    if (params.width && params.height) {
+  // Fixed the type signature to match ReactFlow's expected OnResize type
+  const onResize = (_: React.MouseEvent, __: any, params: any) => {
+    // Extract width and height from the params
+    const { width, height } = params;
+    if (width && height) {
       updateSite(id, undefined, { 
-        width: params.width, 
-        height: params.height 
+        width: width, 
+        height: height 
       });
     }
   };
