@@ -49,23 +49,28 @@ const SiteNode = ({ data, id }: NodeProps<Site>) => {
     }
   };
 
-  // Correctly matching ReactFlow's NodeResizer onResize callback type
+  // Using the correctly typed onResize function based on ReactFlow's NodeResizer requirements
   const onResize = (
-    event: React.MouseEvent, 
-    nodeId: string, 
-    direction: any, 
-    isDone: boolean, 
-    // The 5th parameter is a node object, from which we extract width and height
-    node: { width: number; height: number }
+    _: React.MouseEvent<Element, MouseEvent>,
+    _nodeId: string,
+    _direction: any,
+    _isDone: boolean
   ) => {
-    // Extract width and height from the node
-    const { width, height } = node;
-    if (width && height) {
-      updateSite(id, undefined, { 
-        width: width, 
-        height: height 
-      });
-    }
+    // In this implementation, we need to access the node dimensions from the DOM or state
+    // since ReactFlow passes them differently than what we expected
+    // We'll use a setTimeout to ensure the node has been resized in the DOM before we measure it
+    setTimeout(() => {
+      const nodeElement = document.querySelector(`[data-id="${id}"]`);
+      if (nodeElement) {
+        const width = nodeElement.clientWidth;
+        const height = nodeElement.clientHeight;
+        
+        updateSite(id, undefined, { 
+          width, 
+          height 
+        });
+      }
+    }, 0);
   };
 
   return (
