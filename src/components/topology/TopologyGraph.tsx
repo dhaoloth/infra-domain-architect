@@ -218,16 +218,36 @@ const TopologyGraph = () => {
     }
   }, [updateDC]);
   
-  // Handle node resize (for site nodes)
-  const handleNodeResize = useCallback((event: React.SyntheticEvent, node: Node, width: number, height: number) => {
-    if (node.type === 'site') {
-      // Update site dimensions in store
-      useTopologyStore.getState().updateSite(node.id, undefined, {
-        width,
-        height
-      });
-    }
-  }, []);
+  // Handle node resize events through onNodesChange
+  const handleNodeResize = useCallback((nodeChanges: NodeChange[]) => {
+    // Filter out resize changes
+    const resizeChanges = nodeChanges.filter(
+      change => change.type === 'dimensions' && change.dimensions
+    );
+    
+    // Process each resize change
+    resizeChanges.forEach(change => {
+      if (change.type === 'dimensions' && change.dimensions) {
+        const node = nodes.find(n => n.id === change.id);
+        if (node && node.type === 'site') {
+          // Update site dimensions in store
+          useTopologyStore.getState().updateSite(node.id, undefined, {
+            width: change.dimensions.width,
+            height: change.dimensions.height
+          });
+        }
+      }
+    });
+  }, [nodes]);
+
+  // Extend onNodesChange to handle resizes
+  const onNodesChangeExtended = useCallback(
+    (changes: NodeChange[]) => {
+      handleNodeResize(changes);
+      onNodesChange(changes);
+    },
+    [onNodesChange, handleNodeResize]
+  );
 
   // Check if a DC is within a site area
   const checkDCInSite = useCallback((dcNode: Node, siteNodes: Node[]) => {
@@ -325,7 +345,7 @@ const TopologyGraph = () => {
       <ReactFlow
         nodes={nodes}
         edges={edges}
-        onNodesChange={onNodesChange}
+        onNodesChange={onNodesChangeExtended}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onConnectStart={onConnectStart}
@@ -343,7 +363,6 @@ const TopologyGraph = () => {
         minZoom={0.1}
         maxZoom={2}
         deleteKeyCode={['Backspace', 'Delete']}
-        onNodeResize={handleNodeResize}
       >
         <Controls />
         <Background

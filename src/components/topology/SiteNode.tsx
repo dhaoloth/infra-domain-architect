@@ -24,7 +24,7 @@ const generateRandomPastelColor = () => {
   return `hsla(${hue}, 70%, 90%, 0.3)`;
 };
 
-const SiteNode = ({ data, id, style }: NodeProps<Site>) => {
+const SiteNode = ({ data, id }: NodeProps<Site>) => {
   const { updateSite, removeSite, dcs } = useTopologyStore();
   const [name, setName] = useState(data.name || `Site ${Math.floor(Math.random() * 1000)}`);
   
@@ -32,7 +32,7 @@ const SiteNode = ({ data, id, style }: NodeProps<Site>) => {
   const sitesDCs = useTopologyStore.getState().dcs.filter(dc => dc.siteId === id);
   
   // Use the background color from the data or generate a new one
-  const backgroundColor = data.backgroundColor || style?.backgroundColor || generateRandomPastelColor();
+  const backgroundColor = data.backgroundColor || generateRandomPastelColor();
   
   const handleSave = () => {
     // Ensure name is not empty
