@@ -17,9 +17,9 @@ const Index = () => {
         <InfraCalculator />
       </main>
       
-      <footer className="bg-gray-800 text-white py-4 mt-auto">
+      <footer className="bg-gray-800 text-white py-4">
         <div className="container max-w-6xl mx-auto px-4 text-sm text-center">
-          <p>Domain Infrastructure Sizing and Topology Tool © {new Date().getFullYear()}</p>
+          <p>Domain Infrastructure Sizing Tool © {new Date().getFullYear()}</p>
         </div>
       </footer>
     </div>
