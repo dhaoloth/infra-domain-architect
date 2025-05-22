@@ -21,6 +21,22 @@ export interface ConfigParams {
   subsystem_printing: boolean;
   subsystem_file_sharing: boolean;
   subsystem_dhcp: boolean;
+  // New fields for custom subsystem distribution
+  custom_subsystem_distribution: boolean;
+  subsystem_distribution: {
+    monitoring?: SubsystemDistribution;
+    journaling?: SubsystemDistribution;
+    repository?: SubsystemDistribution;
+    os_installation?: SubsystemDistribution;
+    printing?: SubsystemDistribution;
+    file_sharing?: SubsystemDistribution;
+    dhcp?: SubsystemDistribution;
+  };
+}
+
+export interface SubsystemDistribution {
+  total_servers: number;
+  site_distribution: SiteDistribution;
 }
 
 export interface ResourceSpecs {
@@ -56,6 +72,15 @@ export interface CalculationResults {
     file_sharing?: SubsystemSpecs;
     dhcp?: SubsystemSpecs;
   };
+  subsystem_distribution?: {
+    monitoring?: SiteDistributionResult;
+    journaling?: SiteDistributionResult;
+    repository?: SiteDistributionResult;
+    os_installation?: SiteDistributionResult;
+    printing?: SiteDistributionResult;
+    file_sharing?: SiteDistributionResult;
+    dhcp?: SiteDistributionResult;
+  };
   average_load_per_dc: number;
   warnings: string[];
   total_dcs: number;
@@ -65,4 +90,13 @@ export interface CalculationResults {
   total_subsystem_ram: number;
   total_subsystem_cpu: number;
   total_subsystem_disk: number;
+  total_subsystem_servers: {
+    monitoring?: number;
+    journaling?: number;
+    repository?: number;
+    os_installation?: number;
+    printing?: number;
+    file_sharing?: number;
+    dhcp?: number;
+  };
 }

@@ -1,10 +1,10 @@
-
 import { 
   ConfigParams, 
   ResourceSpecs, 
   SubsystemSpecs, 
   CalculationResults,
-  SiteDistributionResult
+  SiteDistributionResult,
+  SubsystemDistribution
 } from '../types/types';
 
 // Calculate total objects
@@ -283,11 +283,95 @@ const calculateSubsystemSpecs = (
   return subsystemSpecs;
 };
 
+// Calculate subsystem distribution per site
+const calculateSubsystemDistribution = (
+  config: ConfigParams,
+  siteNames: string[],
+  usersBySite: Record<string, number>
+): Record<string, SiteDistributionResult> => {
+  const result: Record<string, SiteDistributionResult> = {};
+  const totalUsers = config.total_users;
+  
+  // Define subsystems to process
+  const subsystems = [
+    { key: 'monitoring', enabled: config.subsystem_monitoring },
+    { key: 'journaling', enabled: config.subsystem_journaling },
+    { key: 'repository', enabled: config.subsystem_repository },
+    { key: 'os_installation', enabled: config.subsystem_os_installation },
+    { key: 'printing', enabled: config.subsystem_printing },
+    { key: 'file_sharing', enabled: config.subsystem_file_sharing },
+    { key: 'dhcp', enabled: config.subsystem_dhcp }
+  ];
+  
+  for (const { key, enabled } of subsystems) {
+    if (!enabled) continue;
+    
+    const subsystemKey = key as keyof typeof config.subsystem_distribution;
+    const customDistribution = config.custom_subsystem_distribution && 
+                              config.subsystem_distribution[subsystemKey];
+    
+    if (customDistribution) {
+      // Use custom distribution if provided
+      const siteDistribution: SiteDistributionResult = {};
+      let remainingServers = customDistribution.total_servers;
+      
+      // First, ensure each site gets its specified distribution
+      for (const site of siteNames) {
+        const siteDistValue = customDistribution.site_distribution[site];
+        if (siteDistValue !== undefined) {
+          const serverCount = typeof siteDistValue === 'string' 
+            ? parseInt(siteDistValue, 10) 
+            : Number(siteDistValue);
+          
+          siteDistribution[site] = serverCount;
+          remainingServers -= serverCount;
+        } else {
+          siteDistribution[site] = 0;
+        }
+      }
+      
+      // If there's a mismatch, adjust the site with most users
+      if (remainingServers !== 0 && siteNames.length > 0) {
+        const sortedSites = [...siteNames].sort((a, b) => 
+          (usersBySite[b] || 0) - (usersBySite[a] || 0)
+        );
+        
+        siteDistribution[sortedSites[0]] += remainingServers;
+      }
+      
+      result[key] = siteDistribution;
+    } else {
+      // Auto-distribute based on user distribution
+      const siteDistribution: SiteDistributionResult = {};
+      
+      // Default: 1 server per site with users, minimum 1 server
+      let totalServers = 0;
+      for (const site of siteNames) {
+        const userCount = usersBySite[site] || 0;
+        // Default logic: Each site with users gets at least one server
+        const serverCount = userCount > 0 ? 1 : 0;
+        siteDistribution[site] = serverCount;
+        totalServers += serverCount;
+      }
+      
+      // Ensure at least one server is deployed
+      if (totalServers === 0 && siteNames.length > 0) {
+        siteDistribution[siteNames[0]] = 1;
+      }
+      
+      result[key] = siteDistribution;
+    }
+  }
+  
+  return result;
+};
+
 // Generate warnings
 const generateWarnings = (
   config: ConfigParams,
   siteDistribution: SiteDistributionResult,
-  averageLoad: number
+  averageLoad: number,
+  subsystemDistribution?: Record<string, SiteDistributionResult>
 ): string[] => {
   const warnings: string[] = [];
   
@@ -301,6 +385,17 @@ const generateWarnings = (
   // Check for excessive load per DC
   if (averageLoad > 10000) {
     warnings.push(`Average load of ${averageLoad} users per DC exceeds the recommended maximum of 10,000.`);
+  }
+  
+  // Add subsystem warnings
+  if (subsystemDistribution) {
+    for (const [subsystem, distribution] of Object.entries(subsystemDistribution)) {
+      const totalServers = Object.values(distribution).reduce((sum, count) => sum + count, 0);
+      
+      if (totalServers === 0 && config[`subsystem_${subsystem}` as keyof ConfigParams]) {
+        warnings.push(`Warning: ${subsystem.charAt(0).toUpperCase() + subsystem.slice(1)} subsystem is enabled but has no servers allocated.`);
+      }
+    }
   }
   
   return warnings;
@@ -350,7 +445,8 @@ const convertSiteDistribution = (
 const calculateTotalAggregates = (
   siteDistribution: SiteDistributionResult,
   verticalSpecs: ResourceSpecs,
-  subsystemSpecs: Record<string, SubsystemSpecs>
+  subsystemSpecs: Record<string, SubsystemSpecs>,
+  subsystemDistribution?: Record<string, SiteDistributionResult>
 ) => {
   // Calculate total number of DCs
   const totalDCs = Object.values(siteDistribution).reduce((sum, count) => sum + count, 0);
@@ -364,12 +460,29 @@ const calculateTotalAggregates = (
   let totalSubsystemRam = 0;
   let totalSubsystemCpu = 0;
   let totalSubsystemDisk = 0;
+  const totalSubsystemServers: Record<string, number> = {};
   
-  Object.values(subsystemSpecs).forEach(specs => {
-    totalSubsystemRam += specs.ram_gb;
-    totalSubsystemCpu += specs.cpu_cores;
-    totalSubsystemDisk += specs.disk_gb;
-  });
+  if (subsystemDistribution) {
+    Object.entries(subsystemDistribution).forEach(([key, distribution]) => {
+      const specs = subsystemSpecs[key];
+      if (specs) {
+        const serverCount = Object.values(distribution).reduce((sum, count) => sum + count, 0);
+        totalSubsystemServers[key] = serverCount;
+        
+        totalSubsystemRam += specs.ram_gb * serverCount;
+        totalSubsystemCpu += specs.cpu_cores * serverCount;
+        totalSubsystemDisk += specs.disk_gb * serverCount;
+      }
+    });
+  } else {
+    // Fall back to old calculation if subsystemDistribution is not provided
+    Object.entries(subsystemSpecs).forEach(([key, specs]) => {
+      totalSubsystemRam += specs.ram_gb;
+      totalSubsystemCpu += specs.cpu_cores;
+      totalSubsystemDisk += specs.disk_gb;
+      totalSubsystemServers[key] = 1; // Default to 1 server per subsystem
+    });
+  }
   
   return {
     totalDCs,
@@ -378,7 +491,8 @@ const calculateTotalAggregates = (
     totalDCDisk,
     totalSubsystemRam,
     totalSubsystemCpu,
-    totalSubsystemDisk
+    totalSubsystemDisk,
+    totalSubsystemServers
   };
 };
 
@@ -405,16 +519,21 @@ export const calculateInfrastructure = (config: ConfigParams): CalculationResult
   // Calculate subsystem specs
   const subsystemSpecs = calculateSubsystemSpecs(config, config.total_users);
   
+  // Calculate subsystem distribution
+  const siteNames = Object.keys(usersBySite);
+  const subsystemDistribution = calculateSubsystemDistribution(config, siteNames, usersBySite);
+  
   // Generate warnings
-  const warnings = generateWarnings(config, siteDistribution, averageLoad);
+  const warnings = generateWarnings(config, siteDistribution, averageLoad, subsystemDistribution);
   
   // Calculate total aggregates
-  const aggregates = calculateTotalAggregates(siteDistribution, verticalSpecs, subsystemSpecs);
+  const aggregates = calculateTotalAggregates(siteDistribution, verticalSpecs, subsystemSpecs, subsystemDistribution);
   
   return {
     site_distribution: siteDistribution,
     vertical_specs: verticalSpecs,
     subsystem_specs: subsystemSpecs,
+    subsystem_distribution: subsystemDistribution,
     average_load_per_dc: averageLoad,
     warnings,
     total_dcs: aggregates.totalDCs,
@@ -423,7 +542,8 @@ export const calculateInfrastructure = (config: ConfigParams): CalculationResult
     total_dc_disk: aggregates.totalDCDisk,
     total_subsystem_ram: aggregates.totalSubsystemRam,
     total_subsystem_cpu: aggregates.totalSubsystemCpu,
-    total_subsystem_disk: aggregates.totalSubsystemDisk
+    total_subsystem_disk: aggregates.totalSubsystemDisk,
+    total_subsystem_servers: aggregates.totalSubsystemServers
   };
 };
 
@@ -456,4 +576,41 @@ export const generateDefaultSiteDistribution = (numSites: number): Record<string
   }
   
   return distribution;
+};
+
+// New helper function to generate default subsystem distribution
+export const generateDefaultSubsystemDistribution = (
+  numSites: number,
+  siteNames: string[]
+): Record<string, SubsystemDistribution> => {
+  const result: Record<string, SubsystemDistribution> = {};
+  
+  // Define subsystems
+  const subsystems = [
+    'monitoring',
+    'journaling',
+    'repository',
+    'os_installation',
+    'printing',
+    'file_sharing',
+    'dhcp'
+  ];
+  
+  // For each subsystem, create a default distribution
+  for (const subsystem of subsystems) {
+    const siteDistribution: Record<string, string> = {};
+    
+    // Default: one server per site, equally distributed
+    for (let i = 0; i < numSites; i++) {
+      const siteName = siteNames[i] || `Site ${i + 1}`;
+      siteDistribution[siteName] = i === 0 ? '1' : '0';
+    }
+    
+    result[subsystem] = {
+      total_servers: 1,
+      site_distribution: siteDistribution
+    };
+  }
+  
+  return result;
 };
