@@ -130,6 +130,11 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results }) => {
                       <div className="text-sm text-muted-foreground">Subsystem CPU</div>
                       <div className="text-lg font-medium">{total_subsystem_cpu} cores</div>
                     </div>
+                    
+                    <div>
+                      <div className="text-sm text-muted-foreground">Subsystem Storage</div>
+                      <div className="text-lg font-medium">{total_subsystem_disk} GB</div>
+                    </div>
                   </>
                 )}
               </div>

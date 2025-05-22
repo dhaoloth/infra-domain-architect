@@ -164,6 +164,34 @@ const calculateSubsystemSpecs = (
       disk_gb: 100,
       disk_type: 'SSD',
       network_mbps: 1000
+    },
+    os_installation: {
+      ram_gb: 4,
+      cpu_cores: 2,
+      disk_gb: 200,
+      disk_type: 'SSD',
+      network_mbps: 1000
+    },
+    printing: {
+      ram_gb: 2,
+      cpu_cores: 1,
+      disk_gb: 50,
+      disk_type: 'SSD',
+      network_mbps: 1000
+    },
+    file_sharing: {
+      ram_gb: 4,
+      cpu_cores: 2,
+      disk_gb: 500,
+      disk_type: 'SSD',
+      network_mbps: 1000
+    },
+    dhcp: {
+      ram_gb: 2,
+      cpu_cores: 1,
+      disk_gb: 20,
+      disk_type: 'SSD',
+      network_mbps: 1000
     }
   };
   
@@ -202,6 +230,51 @@ const calculateSubsystemSpecs = (
       ram_gb: Math.ceil(base.ram_gb * Math.min(scaleFactor, 3)),
       cpu_cores: Math.ceil(base.cpu_cores * Math.min(scaleFactor, 4)),
       disk_gb: Math.ceil(base.disk_gb * Math.min(scaleFactor, 5)),
+      disk_type: base.disk_type,
+      network_mbps: base.network_mbps
+    };
+  }
+  
+  // Add the remaining subsystems
+  if (config.subsystem_os_installation) {
+    const base = baseSpecs.os_installation;
+    subsystemSpecs.os_installation = {
+      ram_gb: Math.ceil(base.ram_gb * Math.min(scaleFactor, 3)),
+      cpu_cores: Math.ceil(base.cpu_cores * Math.min(scaleFactor, 4)),
+      disk_gb: Math.ceil(base.disk_gb * Math.min(scaleFactor, 5)),
+      disk_type: base.disk_type,
+      network_mbps: base.network_mbps
+    };
+  }
+  
+  if (config.subsystem_printing) {
+    const base = baseSpecs.printing;
+    subsystemSpecs.printing = {
+      ram_gb: Math.ceil(base.ram_gb * Math.min(scaleFactor, 2)),
+      cpu_cores: Math.ceil(base.cpu_cores * Math.min(scaleFactor, 3)),
+      disk_gb: Math.ceil(base.disk_gb * Math.min(scaleFactor, 4)),
+      disk_type: base.disk_type,
+      network_mbps: base.network_mbps
+    };
+  }
+  
+  if (config.subsystem_file_sharing) {
+    const base = baseSpecs.file_sharing;
+    subsystemSpecs.file_sharing = {
+      ram_gb: Math.ceil(base.ram_gb * Math.min(scaleFactor, 4)),
+      cpu_cores: Math.ceil(base.cpu_cores * Math.min(scaleFactor, 4)),
+      disk_gb: Math.ceil(base.disk_gb * Math.min(scaleFactor, 6)),
+      disk_type: base.disk_type,
+      network_mbps: base.network_mbps
+    };
+  }
+  
+  if (config.subsystem_dhcp) {
+    const base = baseSpecs.dhcp;
+    subsystemSpecs.dhcp = {
+      ram_gb: Math.ceil(base.ram_gb * Math.min(scaleFactor, 2)),
+      cpu_cores: Math.ceil(base.cpu_cores * Math.min(scaleFactor, 2)),
+      disk_gb: Math.ceil(base.disk_gb * Math.min(scaleFactor, 3)),
       disk_type: base.disk_type,
       network_mbps: base.network_mbps
     };
