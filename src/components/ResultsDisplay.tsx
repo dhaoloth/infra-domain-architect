@@ -9,7 +9,13 @@ interface ResultsDisplayProps {
   results: CalculationResults | null;
 }
 
-const SpecsCard = ({ title, specs }: { title: string; specs: ResourceSpecs | SubsystemSpecs }) => {
+const SpecsCard = ({ title, specs, totalServers }: { 
+  title: string; 
+  specs: ResourceSpecs | SubsystemSpecs;
+  totalServers?: number;
+}) => {
+  const isSubsystem = 'per_server' in specs && specs.per_server;
+  
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -17,27 +23,72 @@ const SpecsCard = ({ title, specs }: { title: string; specs: ResourceSpecs | Sub
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-2 gap-y-2 gap-x-4">
-          <div className="text-sm text-muted-foreground">RAM</div>
-          <div className="text-sm font-medium">{specs.ram_gb} GB</div>
-          
-          <div className="text-sm text-muted-foreground">CPU Cores</div>
-          <div className="text-sm font-medium">{specs.cpu_cores}</div>
-          
-          {'cpu_freq_ghz' in specs && (
+          {isSubsystem ? (
             <>
-              <div className="text-sm text-muted-foreground">CPU Frequency</div>
-              <div className="text-sm font-medium">{specs.cpu_freq_ghz} GHz</div>
+              <div className="col-span-2 mb-2">
+                <div className="text-sm font-medium text-muted-foreground mb-1">Per Server:</div>
+                <div className="grid grid-cols-2 gap-y-2 gap-x-4 pl-4">
+                  <div className="text-sm text-muted-foreground">RAM</div>
+                  <div className="text-sm font-medium">{specs.per_server.ram_gb} GB</div>
+                  
+                  <div className="text-sm text-muted-foreground">CPU Cores</div>
+                  <div className="text-sm font-medium">{specs.per_server.cpu_cores}</div>
+                  
+                  <div className="text-sm text-muted-foreground">Storage</div>
+                  <div className="text-sm font-medium">{specs.per_server.disk_gb} GB</div>
+                </div>
+              </div>
+              
+              <div className="col-span-2">
+                <div className="text-sm font-medium text-muted-foreground mb-1">Total ({totalServers} servers):</div>
+                <div className="grid grid-cols-2 gap-y-2 gap-x-4 pl-4">
+                  <div className="text-sm text-muted-foreground">RAM</div>
+                  <div className="text-sm font-medium">{specs.ram_gb} GB</div>
+                  
+                  <div className="text-sm text-muted-foreground">CPU Cores</div>
+                  <div className="text-sm font-medium">{specs.cpu_cores}</div>
+                  
+                  <div className="text-sm text-muted-foreground">Storage</div>
+                  <div className="text-sm font-medium">{specs.disk_gb} GB</div>
+                </div>
+              </div>
+              
+              <div className="col-span-2 mt-2">
+                <Separator className="mb-2" />
+                <div className="grid grid-cols-2 gap-y-2 gap-x-4">
+                  <div className="text-sm text-muted-foreground">Disk Type</div>
+                  <div className="text-sm font-medium">{specs.disk_type}</div>
+                  
+                  <div className="text-sm text-muted-foreground">Network</div>
+                  <div className="text-sm font-medium">{specs.network_mbps} Mbps</div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="text-sm text-muted-foreground">RAM</div>
+              <div className="text-sm font-medium">{specs.ram_gb} GB</div>
+              
+              <div className="text-sm text-muted-foreground">CPU Cores</div>
+              <div className="text-sm font-medium">{specs.cpu_cores}</div>
+              
+              {'cpu_freq_ghz' in specs && (
+                <>
+                  <div className="text-sm text-muted-foreground">CPU Frequency</div>
+                  <div className="text-sm font-medium">{specs.cpu_freq_ghz} GHz</div>
+                </>
+              )}
+              
+              <div className="text-sm text-muted-foreground">Storage</div>
+              <div className="text-sm font-medium">{specs.disk_gb} GB</div>
+              
+              <div className="text-sm text-muted-foreground">Disk Type</div>
+              <div className="text-sm font-medium">{specs.disk_type}</div>
+              
+              <div className="text-sm text-muted-foreground">Network</div>
+              <div className="text-sm font-medium">{specs.network_mbps} Mbps</div>
             </>
           )}
-          
-          <div className="text-sm text-muted-foreground">Storage</div>
-          <div className="text-sm font-medium">{specs.disk_gb} GB</div>
-          
-          <div className="text-sm text-muted-foreground">Disk Type</div>
-          <div className="text-sm font-medium">{specs.disk_type}</div>
-          
-          <div className="text-sm text-muted-foreground">Network</div>
-          <div className="text-sm font-medium">{specs.network_mbps} Mbps</div>
         </div>
       </CardContent>
     </Card>
@@ -243,13 +294,15 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results }) => {
             
             {enabledSubsystems.map(subsystem => {
               const specs = subsystem_specs[subsystem.key];
+              const serverCount = total_subsystem_servers?.[subsystem.key] || 0;
               if (!specs) return null;
               
               return (
                 <SpecsCard 
                   key={subsystem.key} 
                   title={`${subsystem.name} Subsystem`} 
-                  specs={specs} 
+                  specs={specs}
+                  totalServers={serverCount}
                 />
               );
             })}

@@ -1,6 +1,25 @@
+import { SiteDistribution } from './types';
 
-export interface SiteDistribution {
-  [siteName: string]: number | string;
+export interface ResourceSpecs {
+  ram_gb: number;
+  disk_gb: number;
+  cpu_cores: number;
+  cpu_freq_ghz: number;
+  disk_type: string;
+  network_mbps: number;
+}
+
+export interface SubsystemSpecs {
+  ram_gb: number;
+  cpu_cores: number;
+  disk_gb: number;
+  disk_type: string;
+  network_mbps: number;
+  per_server?: {
+    ram_gb: number;
+    cpu_cores: number;
+    disk_gb: number;
+  };
 }
 
 export interface ConfigParams {
@@ -21,7 +40,6 @@ export interface ConfigParams {
   subsystem_printing: boolean;
   subsystem_file_sharing: boolean;
   subsystem_dhcp: boolean;
-  // New fields for custom subsystem distribution
   custom_subsystem_distribution: boolean;
   subsystem_distribution: {
     monitoring?: SubsystemDistribution;
@@ -37,23 +55,6 @@ export interface ConfigParams {
 export interface SubsystemDistribution {
   total_servers: number;
   site_distribution: SiteDistribution;
-}
-
-export interface ResourceSpecs {
-  ram_gb: number;
-  disk_gb: number;
-  cpu_cores: number;
-  cpu_freq_ghz: number;
-  disk_type: string;
-  network_mbps: number;
-}
-
-export interface SubsystemSpecs {
-  ram_gb: number;
-  cpu_cores: number;
-  disk_gb: number;
-  disk_type: string;
-  network_mbps: number;
 }
 
 export interface SiteDistributionResult {
