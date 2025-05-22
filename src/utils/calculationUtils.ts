@@ -142,7 +142,7 @@ const calculateSubsystemSpecs = (
 ): Record<string, SubsystemSpecs> => {
   const subsystemSpecs: Record<string, SubsystemSpecs> = {};
   
-  // Base specs for each subsystem
+  // Base specs for each subsystem (per server)
   const baseSpecs = {
     monitoring: {
       ram_gb: 2,
@@ -201,84 +201,39 @@ const calculateSubsystemSpecs = (
     scaleFactor = 1 + (totalUsers - 10000) / 20000;
   }
   
+  // Helper function to calculate total servers for a subsystem
+  const calculateTotalServers = (subsystemKey: string): number => {
+    if (config.custom_subsystem_distribution && config.subsystem_distribution[subsystemKey]) {
+      return config.subsystem_distribution[subsystemKey].total_servers;
+    }
+    return 1; // Default to 1 server if not specified
+  };
+  
   // Apply scaling to enabled subsystems
-  if (config.subsystem_monitoring) {
-    const base = baseSpecs.monitoring;
-    subsystemSpecs.monitoring = {
-      ram_gb: Math.ceil(base.ram_gb * Math.min(scaleFactor, 3)),
-      cpu_cores: Math.ceil(base.cpu_cores * Math.min(scaleFactor, 4)),
-      disk_gb: Math.ceil(base.disk_gb * Math.min(scaleFactor, 5)),
-      disk_type: base.disk_type,
-      network_mbps: base.network_mbps
+  Object.entries(baseSpecs).forEach(([key, base]) => {
+    const subsystemKey = key as keyof typeof config.subsystem_distribution;
+    if (!config[`subsystem_${key}` as keyof ConfigParams]) return;
+    
+    const totalServers = calculateTotalServers(key);
+    const loadPerServer = 1 / totalServers;
+    
+    // Calculate per-server specs with scaling
+    const perServer = {
+      ram_gb: Math.ceil(base.ram_gb * Math.min(scaleFactor, 3) * loadPerServer),
+      cpu_cores: Math.ceil(base.cpu_cores * Math.min(scaleFactor, 4) * loadPerServer),
+      disk_gb: Math.ceil(base.disk_gb * Math.min(scaleFactor, 5) * loadPerServer)
     };
-  }
-  
-  if (config.subsystem_journaling) {
-    const base = baseSpecs.journaling;
-    subsystemSpecs.journaling = {
-      ram_gb: Math.ceil(base.ram_gb * Math.min(scaleFactor, 3)),
-      cpu_cores: Math.ceil(base.cpu_cores * Math.min(scaleFactor, 4)),
-      disk_gb: Math.ceil(base.disk_gb * Math.min(scaleFactor, 5)),
+    
+    // Calculate total specs
+    subsystemSpecs[key] = {
+      ram_gb: perServer.ram_gb * totalServers,
+      cpu_cores: perServer.cpu_cores * totalServers,
+      disk_gb: perServer.disk_gb * totalServers,
       disk_type: base.disk_type,
-      network_mbps: base.network_mbps
+      network_mbps: base.network_mbps,
+      per_server: perServer
     };
-  }
-  
-  if (config.subsystem_repository) {
-    const base = baseSpecs.repository;
-    subsystemSpecs.repository = {
-      ram_gb: Math.ceil(base.ram_gb * Math.min(scaleFactor, 3)),
-      cpu_cores: Math.ceil(base.cpu_cores * Math.min(scaleFactor, 4)),
-      disk_gb: Math.ceil(base.disk_gb * Math.min(scaleFactor, 5)),
-      disk_type: base.disk_type,
-      network_mbps: base.network_mbps
-    };
-  }
-  
-  // Add the remaining subsystems
-  if (config.subsystem_os_installation) {
-    const base = baseSpecs.os_installation;
-    subsystemSpecs.os_installation = {
-      ram_gb: Math.ceil(base.ram_gb * Math.min(scaleFactor, 3)),
-      cpu_cores: Math.ceil(base.cpu_cores * Math.min(scaleFactor, 4)),
-      disk_gb: Math.ceil(base.disk_gb * Math.min(scaleFactor, 5)),
-      disk_type: base.disk_type,
-      network_mbps: base.network_mbps
-    };
-  }
-  
-  if (config.subsystem_printing) {
-    const base = baseSpecs.printing;
-    subsystemSpecs.printing = {
-      ram_gb: Math.ceil(base.ram_gb * Math.min(scaleFactor, 2)),
-      cpu_cores: Math.ceil(base.cpu_cores * Math.min(scaleFactor, 3)),
-      disk_gb: Math.ceil(base.disk_gb * Math.min(scaleFactor, 4)),
-      disk_type: base.disk_type,
-      network_mbps: base.network_mbps
-    };
-  }
-  
-  if (config.subsystem_file_sharing) {
-    const base = baseSpecs.file_sharing;
-    subsystemSpecs.file_sharing = {
-      ram_gb: Math.ceil(base.ram_gb * Math.min(scaleFactor, 4)),
-      cpu_cores: Math.ceil(base.cpu_cores * Math.min(scaleFactor, 4)),
-      disk_gb: Math.ceil(base.disk_gb * Math.min(scaleFactor, 6)),
-      disk_type: base.disk_type,
-      network_mbps: base.network_mbps
-    };
-  }
-  
-  if (config.subsystem_dhcp) {
-    const base = baseSpecs.dhcp;
-    subsystemSpecs.dhcp = {
-      ram_gb: Math.ceil(base.ram_gb * Math.min(scaleFactor, 2)),
-      cpu_cores: Math.ceil(base.cpu_cores * Math.min(scaleFactor, 2)),
-      disk_gb: Math.ceil(base.disk_gb * Math.min(scaleFactor, 3)),
-      disk_type: base.disk_type,
-      network_mbps: base.network_mbps
-    };
-  }
+  });
   
   return subsystemSpecs;
 };
