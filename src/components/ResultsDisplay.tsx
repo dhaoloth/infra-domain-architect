@@ -1,10 +1,8 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { CalculationResults, ResourceSpecs, SubsystemSpecs } from '@/types/types';
-import SiteDistribution from './SiteDistribution';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface ResultsDisplayProps {
@@ -46,37 +44,49 @@ const SpecsCard = ({ title, specs }: { title: string; specs: ResourceSpecs | Sub
   );
 };
 
-const SubsystemDistributionCard = ({ 
-  title, 
-  distribution, 
-  totalServers 
+const SiteDistributionTree = ({ 
+  site, 
+  dcCount,
+  subsystemDistribution,
+  totalSubsystemServers
 }: { 
-  title: string; 
-  distribution: Record<string, number>; 
-  totalServers: number; 
+  site: string;
+  dcCount: number;
+  subsystemDistribution: Record<string, Record<string, number>>;
+  totalSubsystemServers: Record<string, number>;
 }) => {
-  if (!distribution || Object.keys(distribution).length === 0) return null;
-  
+  const subsystems = Object.entries(subsystemDistribution)
+    .filter(([key, distribution]) => distribution[site] > 0)
+    .map(([key, distribution]) => ({
+      name: key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' '),
+      count: distribution[site]
+    }));
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-sm font-medium">{title} Distribution</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-2">
-          {Object.entries(distribution).map(([site, count], index) => (
-            <div key={index} className="flex items-center justify-between">
-              <span className="text-sm font-medium">{site}</span>
-              <div className="flex items-center space-x-2">
-                <div className="h-2 bg-gradient-to-r from-green-600 to-green-400 rounded"
-                     style={{ width: `${Math.max((count / totalServers) * 200, 24)}px` }}></div>
-                <span className="text-sm font-bold">{count} Servers</span>
+    <div className="mb-8 last:mb-0">
+      <div className="flex items-center gap-4 mb-4">
+        <h3 className="text-lg font-semibold">{site}</h3>
+        <div className="h-px flex-1 bg-border"></div>
+        <Badge variant="outline" className="text-blue-600 bg-blue-50">
+          {dcCount} DCs
+        </Badge>
+      </div>
+      
+      {subsystems.length > 0 && (
+        <div className="pl-6 border-l border-dashed border-border">
+          {subsystems.map(({ name, count }, index) => (
+            <div key={index} className="mb-3 last:mb-0">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <span className="font-medium">{name}</span>
+                <div className="h-px flex-1 bg-border/50"></div>
+                <span className="text-sm text-muted-foreground">{count} servers</span>
               </div>
             </div>
           ))}
         </div>
-      </CardContent>
-    </Card>
+      )}
+    </div>
   );
 };
 
@@ -140,95 +150,91 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results }) => {
         </TabsList>
         
         <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Summary</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <div className="text-sm text-muted-foreground">Average Load</div>
-                    <div className="text-lg font-medium">{Math.round(average_load_per_dc)} users per DC</div>
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <div className="text-sm text-muted-foreground">Total DCs</div>
-                      <div className="text-lg font-medium">{total_dcs}</div>
-                    </div>
-                    
-                    <div>
-                      <div className="text-sm text-muted-foreground">Total RAM</div>
-                      <div className="text-lg font-medium">{total_dc_ram} GB</div>
-                    </div>
-                    
-                    <div>
-                      <div className="text-sm text-muted-foreground">Total CPU</div>
-                      <div className="text-lg font-medium">{total_dc_cpu} cores</div>
-                    </div>
-                    
-                    <div>
-                      <div className="text-sm text-muted-foreground">Total Storage</div>
-                      <div className="text-lg font-medium">{total_dc_disk} GB</div>
-                    </div>
-                  </div>
-                  
-                  {enabledSubsystems.length > 0 && (
-                    <>
-                      <Separator />
-                      
-                      <h3 className="text-md font-medium">Subsystem Totals</h3>
-                      
-                      <div className="grid grid-cols-3 gap-4">
-                        {total_subsystem_servers && (
-                          <div>
-                            <div className="text-sm text-muted-foreground">Total Servers</div>
-                            <div className="text-lg font-medium">
-                              {Object.values(total_subsystem_servers).reduce((a, b) => a + b, 0)}
-                            </div>
-                          </div>
-                        )}
-                        
-                        <div>
-                          <div className="text-sm text-muted-foreground">Total RAM</div>
-                          <div className="text-lg font-medium">{total_subsystem_ram} GB</div>
-                        </div>
-                        
-                        <div>
-                          <div className="text-sm text-muted-foreground">Total CPU</div>
-                          <div className="text-lg font-medium">{total_subsystem_cpu} cores</div>
-                        </div>
-                        
-                        <div>
-                          <div className="text-sm text-muted-foreground">Total Storage</div>
-                          <div className="text-lg font-medium">{total_subsystem_disk} GB</div>
-                        </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-2">
-                        {enabledSubsystems.map(subsystem => {
-                          const serverCount = total_subsystem_servers?.[subsystem.key] || 0;
-                          if (serverCount === 0) return null;
-                          
-                          return (
-                            <div key={subsystem.key}>
-                              <div className="text-sm text-muted-foreground">{subsystem.name}</div>
-                              <div className="text-lg font-medium">{serverCount} servers</div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </>
-                  )}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Summary</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <div className="text-sm text-muted-foreground">Average Load</div>
+                  <div className="text-lg font-medium">{Math.round(average_load_per_dc)} users per DC</div>
                 </div>
-              </CardContent>
-            </Card>
-            
-            <SiteDistribution distribution={site_distribution} totalDCs={total_dcs} />
-          </div>
+                
+                <Separator />
+                
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <div className="text-sm text-muted-foreground">Total DCs</div>
+                    <div className="text-lg font-medium">{total_dcs}</div>
+                  </div>
+                  
+                  <div>
+                    <div className="text-sm text-muted-foreground">Total RAM</div>
+                    <div className="text-lg font-medium">{total_dc_ram} GB</div>
+                  </div>
+                  
+                  <div>
+                    <div className="text-sm text-muted-foreground">Total CPU</div>
+                    <div className="text-lg font-medium">{total_dc_cpu} cores</div>
+                  </div>
+                  
+                  <div>
+                    <div className="text-sm text-muted-foreground">Total Storage</div>
+                    <div className="text-lg font-medium">{total_dc_disk} GB</div>
+                  </div>
+                </div>
+                
+                {enabledSubsystems.length > 0 && (
+                  <>
+                    <Separator />
+                    
+                    <h3 className="text-md font-medium">Subsystem Totals</h3>
+                    
+                    <div className="grid grid-cols-3 gap-4">
+                      {total_subsystem_servers && (
+                        <div>
+                          <div className="text-sm text-muted-foreground">Total Servers</div>
+                          <div className="text-lg font-medium">
+                            {Object.values(total_subsystem_servers).reduce((a, b) => a + b, 0)}
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div>
+                        <div className="text-sm text-muted-foreground">Total RAM</div>
+                        <div className="text-lg font-medium">{total_subsystem_ram} GB</div>
+                      </div>
+                      
+                      <div>
+                        <div className="text-sm text-muted-foreground">Total CPU</div>
+                        <div className="text-lg font-medium">{total_subsystem_cpu} cores</div>
+                      </div>
+                      
+                      <div>
+                        <div className="text-sm text-muted-foreground">Total Storage</div>
+                        <div className="text-lg font-medium">{total_subsystem_disk} GB</div>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-2">
+                      {enabledSubsystems.map(subsystem => {
+                        const serverCount = total_subsystem_servers?.[subsystem.key] || 0;
+                        if (serverCount === 0) return null;
+                        
+                        return (
+                          <div key={subsystem.key}>
+                            <div className="text-sm text-muted-foreground">{subsystem.name}</div>
+                            <div className="text-lg font-medium">{serverCount} servers</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+            </CardContent>
+          </Card>
           
           <h3 className="text-xl font-bold mt-6">Resource Specifications</h3>
           
@@ -251,25 +257,22 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results }) => {
         </TabsContent>
         
         <TabsContent value="distributions" className="space-y-6">
-          <div className="grid grid-cols-1 gap-6">
-            <SiteDistribution distribution={site_distribution} totalDCs={total_dcs} />
-            
-            {subsystem_distribution && enabledSubsystems.map(subsystem => {
-              const distribution = subsystem_distribution[subsystem.key];
-              const totalServers = total_subsystem_servers?.[subsystem.key] || 0;
-              
-              if (!distribution || totalServers === 0) return null;
-              
-              return (
-                <SubsystemDistributionCard
-                  key={subsystem.key}
-                  title={subsystem.name}
-                  distribution={distribution}
-                  totalServers={totalServers}
+          <Card>
+            <CardHeader>
+              <CardTitle>Infrastructure Distribution</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {Object.entries(site_distribution).map(([site, dcCount]) => (
+                <SiteDistributionTree
+                  key={site}
+                  site={site}
+                  dcCount={dcCount}
+                  subsystemDistribution={subsystem_distribution || {}}
+                  totalSubsystemServers={total_subsystem_servers || {}}
                 />
-              );
-            })}
-          </div>
+              ))}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
