@@ -1,6 +1,4 @@
-
 import { useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
 import { ConfigParams, CalculationResults } from '@/types/types';
 import { calculateInfrastructure } from '@/utils/calculationUtils';
 import ConfigForm from './ConfigForm';
@@ -30,17 +28,7 @@ const InfraCalculator = () => {
       </div>
       
       {showResults && results ? (
-        <>
-          <div className="mb-4">
-            <button 
-              className="text-blue-600 hover:text-blue-800 flex items-center" 
-              onClick={handleBackToConfig}
-            >
-              ← Back to configuration
-            </button>
-          </div>
-          <ResultsDisplay results={results} />
-        </>
+        <ResultsDisplay results={results} onBack={handleBackToConfig} />
       ) : (
         <ConfigForm onSubmit={handleCalculate} />
       )}

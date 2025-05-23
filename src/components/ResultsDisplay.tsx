@@ -1,12 +1,15 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { CalculationResults, ResourceSpecs, SubsystemSpecs } from '@/types/types';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { exportToPDF } from '@/utils/pdfExport';
+import { FileDown } from 'lucide-react';
 
 interface ResultsDisplayProps {
   results: CalculationResults | null;
+  onBack: () => void;
 }
 
 const SpecsCard = ({ title, specs, totalServers }: { 
@@ -141,7 +144,7 @@ const SiteDistributionTree = ({
   );
 };
 
-const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results }) => {
+const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results, onBack }) => {
   if (!results) return null;
   
   const { 
@@ -161,7 +164,6 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results }) => {
     total_subsystem_servers
   } = results;
   
-  // Define subsystems with their display names
   const subsystems = [
     { key: 'monitoring', name: 'Monitoring' },
     { key: 'journaling', name: 'Journaling' },
@@ -172,16 +174,39 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results }) => {
     { key: 'dhcp', name: 'DHCP' }
   ];
   
-  // Filter to only enabled subsystems
   const enabledSubsystems = subsystems.filter(s => subsystem_specs[s.key]);
+  
+  const handleExportPDF = () => {
+    exportToPDF(results);
+  };
   
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Calculation Results</h2>
-        <Badge variant="outline" className="text-blue-600 bg-blue-50">
-          {total_dcs} Total DCs
-        </Badge>
+        <div className="flex items-center gap-4">
+          <button 
+            className="text-blue-600 hover:text-blue-800" 
+            onClick={onBack}
+          >
+            ← Back
+          </button>
+          <h2 className="text-2xl font-bold">Calculation Results</h2>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-blue-600 bg-blue-50">
+            {total_dcs} Total DCs
+          </Badge>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleExportPDF}
+            className="flex items-center gap-2"
+          >
+            <FileDown className="w-4 h-4" />
+            Export PDF
+          </Button>
+        </div>
       </div>
       
       {warnings.length > 0 && (
@@ -194,140 +219,129 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results }) => {
         </div>
       )}
       
-      <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid grid-cols-2 mb-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="distributions">Distributions</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="overview" className="space-y-6">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Summary</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <div className="text-sm text-muted-foreground">Average Load</div>
-                  <div className="text-lg font-medium">{Math.round(average_load_per_dc)} users per DC</div>
-                </div>
-                
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg">Summary</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div>
+              <div className="text-sm text-muted-foreground">Average Load</div>
+              <div className="text-lg font-medium">{Math.round(average_load_per_dc)} users per DC</div>
+            </div>
+            
+            <Separator />
+            
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <div className="text-sm text-muted-foreground">Total DCs</div>
+                <div className="text-lg font-medium">{total_dcs}</div>
+              </div>
+              
+              <div>
+                <div className="text-sm text-muted-foreground">Total RAM</div>
+                <div className="text-lg font-medium">{total_dc_ram} GB</div>
+              </div>
+              
+              <div>
+                <div className="text-sm text-muted-foreground">Total CPU</div>
+                <div className="text-lg font-medium">{total_dc_cpu} cores</div>
+              </div>
+              
+              <div>
+                <div className="text-sm text-muted-foreground">Total Storage</div>
+                <div className="text-lg font-medium">{total_dc_disk} GB</div>
+              </div>
+            </div>
+            
+            {enabledSubsystems.length > 0 && (
+              <>
                 <Separator />
                 
+                <h3 className="text-md font-medium">Subsystem Totals</h3>
+                
                 <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <div className="text-sm text-muted-foreground">Total DCs</div>
-                    <div className="text-lg font-medium">{total_dcs}</div>
-                  </div>
+                  {total_subsystem_servers && (
+                    <div>
+                      <div className="text-sm text-muted-foreground">Total Servers</div>
+                      <div className="text-lg font-medium">
+                        {Object.values(total_subsystem_servers).reduce((a, b) => a + b, 0)}
+                      </div>
+                    </div>
+                  )}
                   
                   <div>
                     <div className="text-sm text-muted-foreground">Total RAM</div>
-                    <div className="text-lg font-medium">{total_dc_ram} GB</div>
+                    <div className="text-lg font-medium">{total_subsystem_ram} GB</div>
                   </div>
                   
                   <div>
                     <div className="text-sm text-muted-foreground">Total CPU</div>
-                    <div className="text-lg font-medium">{total_dc_cpu} cores</div>
+                    <div className="text-lg font-medium">{total_subsystem_cpu} cores</div>
                   </div>
                   
                   <div>
                     <div className="text-sm text-muted-foreground">Total Storage</div>
-                    <div className="text-lg font-medium">{total_dc_disk} GB</div>
+                    <div className="text-lg font-medium">{total_subsystem_disk} GB</div>
                   </div>
                 </div>
                 
-                {enabledSubsystems.length > 0 && (
-                  <>
-                    <Separator />
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-2">
+                  {enabledSubsystems.map(subsystem => {
+                    const serverCount = total_subsystem_servers?.[subsystem.key] || 0;
+                    if (serverCount === 0) return null;
                     
-                    <h3 className="text-md font-medium">Subsystem Totals</h3>
-                    
-                    <div className="grid grid-cols-3 gap-4">
-                      {total_subsystem_servers && (
-                        <div>
-                          <div className="text-sm text-muted-foreground">Total Servers</div>
-                          <div className="text-lg font-medium">
-                            {Object.values(total_subsystem_servers).reduce((a, b) => a + b, 0)}
-                          </div>
-                        </div>
-                      )}
-                      
-                      <div>
-                        <div className="text-sm text-muted-foreground">Total RAM</div>
-                        <div className="text-lg font-medium">{total_subsystem_ram} GB</div>
+                    return (
+                      <div key={subsystem.key}>
+                        <div className="text-sm text-muted-foreground">{subsystem.name}</div>
+                        <div className="text-lg font-medium">{serverCount} servers</div>
                       </div>
-                      
-                      <div>
-                        <div className="text-sm text-muted-foreground">Total CPU</div>
-                        <div className="text-lg font-medium">{total_subsystem_cpu} cores</div>
-                      </div>
-                      
-                      <div>
-                        <div className="text-sm text-muted-foreground">Total Storage</div>
-                        <div className="text-lg font-medium">{total_subsystem_disk} GB</div>
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-2">
-                      {enabledSubsystems.map(subsystem => {
-                        const serverCount = total_subsystem_servers?.[subsystem.key] || 0;
-                        if (serverCount === 0) return null;
-                        
-                        return (
-                          <div key={subsystem.key}>
-                            <div className="text-sm text-muted-foreground">{subsystem.name}</div>
-                            <div className="text-lg font-medium">{serverCount} servers</div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-          
-          <h3 className="text-xl font-bold mt-6">Resource Specifications</h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            <SpecsCard title="Per Domain Controller" specs={vertical_specs} />
-            
-            {enabledSubsystems.map(subsystem => {
-              const specs = subsystem_specs[subsystem.key];
-              const serverCount = total_subsystem_servers?.[subsystem.key] || 0;
-              if (!specs) return null;
-              
-              return (
-                <SpecsCard 
-                  key={subsystem.key} 
-                  title={`${subsystem.name} Subsystem`} 
-                  specs={specs}
-                  totalServers={serverCount}
-                />
-              );
-            })}
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
-        </TabsContent>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Infrastructure Distribution</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {Object.entries(site_distribution).map(([site, dcCount]) => (
+            <SiteDistributionTree
+              key={site}
+              site={site}
+              dcCount={dcCount}
+              subsystemDistribution={subsystem_distribution || {}}
+              totalSubsystemServers={total_subsystem_servers || {}}
+            />
+          ))}
+        </CardContent>
+      </Card>
+      
+      <h3 className="text-xl font-bold mt-6">Resource Specifications</h3>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <SpecsCard title="Per Domain Controller" specs={vertical_specs} />
         
-        <TabsContent value="distributions" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Infrastructure Distribution</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {Object.entries(site_distribution).map(([site, dcCount]) => (
-                <SiteDistributionTree
-                  key={site}
-                  site={site}
-                  dcCount={dcCount}
-                  subsystemDistribution={subsystem_distribution || {}}
-                  totalSubsystemServers={total_subsystem_servers || {}}
-                />
-              ))}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+        {enabledSubsystems.map(subsystem => {
+          const specs = subsystem_specs[subsystem.key];
+          const serverCount = total_subsystem_servers?.[subsystem.key] || 0;
+          if (!specs) return null;
+          
+          return (
+            <SpecsCard 
+              key={subsystem.key} 
+              title={`${subsystem.name} Subsystem`} 
+              specs={specs}
+              totalServers={serverCount}
+            />
+          );
+        })}
+      </div>
     </div>
   );
 };
